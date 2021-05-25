@@ -2,8 +2,8 @@
 % Lina Schaare, May 2021
 
 %% load utils
-dir = '/data/pt_02319/schaare/';
-P = '/data/pt_02319/schaare/utils/surfstat/'; 
+dir = []; % add data directory
+P = [dir 'utils/surfstat/']; 
 addpath(genpath(P));
 addpath([P, 'surfstat_tutorial/surfstat']);
 addpath([P, 'FreeSurfer5.3']);
@@ -183,7 +183,7 @@ end
 for out = 1
     
     % find participants with missing data
-    studykeep = csvread('/data/pt_02319/schaare/affect_cognition/data/studykeep_indices.csv');
+    studykeep = csvread([dir 'affect_cognition/data/studykeep_indices.csv']);
     [m1, m2] = find(isnan(list_of_vars(studykeep,:)));
     studykeep(m1) = [];
     %studykeep   = mintersect(find(mean(HCP200_CT,2)>0), find(HCP.FS_IntraCranial_Vol>0), find(~isnan(mean(list_of_vars,2))));
