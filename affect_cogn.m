@@ -2,7 +2,7 @@
 % Lina Schaare, May 2021
 
 %% load utils
-dir = []; % add data directory
+dir = '/datadir/'; % adapt data directory
 P = [dir 'utils/surfstat/']; 
 addpath(genpath(P));
 addpath([P, 'surfstat_tutorial/surfstat']);
@@ -16,7 +16,25 @@ addpath([dir 'utils/misc/'])
 
 DPATH = [dir 'data/HCP/'];                          
 MASKPATH = [P, 'FreeSurfer5.3/fsaverage5/label/'];
-RPATH = [dir 'affect_cognition/results/FIG/'];
+RPATH = ['/projects/cognitive_neurogenetics/affect_cognition/FIG/']; % adapt output directory
+
+% freesurfer surfaces 
+S = SurfStatAvSurf({[P 'surfstat_tutorial/fsaverage5/lh.inflated'],[P 'surfstat_tutorial/fsaverage5/rh.inflated']});
+SP = SurfStatAvSurf({[P 'surfstat_tutorial/fsaverage5/lh.pial'],[P 'surfstat_tutorial/fsaverage5/rh.pial']});
+SW = SurfStatAvSurf({[P 'surfstat_tutorial/fsaverage5/lh.white'],[P 'surfstat_tutorial/fsaverage5/rh.white']});
+SM.coord = (SP.coord + SW.coord)./2; 
+SM.tri   = SP.tri;
+SInf        = SW;
+SInf.coord  = 0.2 *SW.coord + 0.8* S.coord;
+SN.coord    = 0.4*SInf.coord + 0.6*SM.coord;
+SN.tri      = SM.tri;
+
+% table specifications
+import mlreportgen.dom.*
+fontFamily = FontFamily('TimesNewRoman');
+fontFamily.BackupFamilyNames = {'Times'};
+fontSize = FontSize('10pt');
+t.Style = {fontFamily, fontSize};
 
 %% load HCP data
 HCP=readtable([DPATH, 'unrestricted_hlschaare_5_21_2020_5_11_56.csv']);
@@ -66,87 +84,87 @@ if load_new == 0
     
 else        
      % load cortical thickness  
-%      HCP200 = ft_read_cifti([dir 'utils/misc/Schaefer2018_200Parcels_7Networks_order.dlabel.nii'],'mapname','array');
-%      
-%      CTX_fs32k = zeros(length(HCP_r.Subject),64984);
-%      
-%     for i = 1:length(HCP_r.Subject)
-%         i
-%         try
-%             L = gifti(['/Volumes/BnB3/BnB1/Raw_Data_nonBIDS/HCP/', num2str(HCP_r.Subject(i)),'/MNINonLinear/fsaverage_LR32k/', num2str(HCP_r.Subject(i)),'.L.thickness.32k_fs_LR.shape.gii'])
-%             R = gifti(['/Volumes/BnB3/BnB1/Raw_Data_nonBIDS/HCP/', num2str(HCP_r.Subject(i)),'/MNINonLinear/fsaverage_LR32k/', num2str(HCP_r.Subject(i)),'.R.thickness.32k_fs_LR.shape.gii'])
-%             
-%             CTX_fs32k(i,:) = [L.cdata;R.cdata];
-%         catch
-%         end
-%     end 
-%     
-%     % parcellate CT data
-%     HCP200_CT= zeros(length(HCP_r.Subject),200);
-%     for i = 1:200
-%         HCP200_CT(:,i) = trimmean(CTX_fs32k(:,find(HCP200.dlabel==i))',10)';
-%     end
-%     
-%     % annotate parcels
-%     for parcels200 = 1
-%         [vertices, label, colortablel] = ...
-%             fs_read_annotation([MASKPATH 'lh.Schaefer2018_200Parcels_7Networks_order.annot']);
-%         parcel_left = label;
-%         label_left = label;
-%         for i = 1:size(colortablel.table, 1)
-%             mycode = colortablel.table(i,5);
-%             parcel_left(find(parcel_left == mycode)) = i;
-%         end
-%         
-%         [vertices, label, colortabler] = ...
-%             fs_read_annotation([MASKPATH 'rh.Schaefer2018_200Parcels_7Networks_order.annot']);
-%         parcel_right = label;
-%         label_right = label;
-%         for i = 1:size(colortabler.table, 1)
-%             mycode = colortabler.table(i,5);
-%             parcel_right(find(parcel_right == mycode)) = i;
-%         end
-%         
-%         parcels200 = [parcel_left; parcel_right+1000];
-%         parcels200 = parcels200';
-%         
-%         names200 = [colortablel.struct_names(2:end);colortabler.struct_names(2:end)]
-%         
-%     end
-%      
-%     % load surface area and parcellate
-%     % use the unsmoothed data for the parcels
-%     isthere_ct = zeros(size(HCP_r.Subject));
-%     namesct_left = strcat('/Volumes/BnB_TEMP/Sofie/Genetics/2018.CIVIT_FS/FS_surf/', num2str(HCP_r.Subject), '_lh2areaj_fsaverage_1.mgh')
-%     namesct_right = strcat('/Volumes/BnB_TEMP/Sofie/Genetics/2018.CIVIT_FS/FS_surf/', num2str(HCP_r.Subject), '_rh2areaj_fsaverage_1.mgh')
-%     
-%     AREA = zeros(length(HCP_r.Subject),size(SW.coord,2));
-%     for i = 1:length(HCP_r.Subject)
-%         try
-%             AREA(i,1:10242)     = SurfStatReadData1(namesct_left(i,:));
-%             AREA(i,10243:20484) = SurfStatReadData1(namesct_right(i,:));
-%             isthere_ct(i) = 1;
-%         catch
-%             disp([namesct_left(i,:) ' not there'])
-%         end
-%         sum(isthere_ct)/length(isthere_ct)
-%     end
-%     
-%     area200 = []
-%     for i = 1:100
-%         area200(i,:) = sum(AREA(:,find(parcels200==i+1)),2);
-%     end
-%     
-%     for i = 1:100
-%         area200(i+100,:) = sum(AREA(:,find(parcels200==i+1001)),2);
-%     end
+     HCP200 = ft_read_cifti([dir 'utils/misc/Schaefer2018_200Parcels_7Networks_order.dlabel.nii'],'mapname','array');
+     
+     CTX_fs32k = zeros(length(HCP_r.Subject),64984);
+     
+    for i = 1:length(HCP_r.Subject)
+        i
+        try
+            L = gifti(['/HCP/', num2str(HCP_r.Subject(i)),'/MNINonLinear/fsaverage_LR32k/', num2str(HCP_r.Subject(i)),'.L.thickness.32k_fs_LR.shape.gii']);
+            R = gifti(['/HCP/', num2str(HCP_r.Subject(i)),'/MNINonLinear/fsaverage_LR32k/', num2str(HCP_r.Subject(i)),'.R.thickness.32k_fs_LR.shape.gii']);
+            
+            CTX_fs32k(i,:) = [L.cdata;R.cdata];
+        catch
+        end
+    end 
+    
+    % parcellate CT data
+    HCP200_CT= zeros(length(HCP_r.Subject),200);
+    for i = 1:200
+        HCP200_CT(:,i) = trimmean(CTX_fs32k(:,find(HCP200.dlabel==i))',10)';
+    end
+    
+    % annotate parcels
+    for parcels200 = 1
+        [vertices, label, colortablel] = ...
+            fs_read_annotation([MASKPATH 'lh.Schaefer2018_200Parcels_7Networks_order.annot']);
+        parcel_left = label;
+        label_left = label;
+        for i = 1:size(colortablel.table, 1)
+            mycode = colortablel.table(i,5);
+            parcel_left(find(parcel_left == mycode)) = i;
+        end
+        
+        [vertices, label, colortabler] = ...
+            fs_read_annotation([MASKPATH 'rh.Schaefer2018_200Parcels_7Networks_order.annot']);
+        parcel_right = label;
+        label_right = label;
+        for i = 1:size(colortabler.table, 1)
+            mycode = colortabler.table(i,5);
+            parcel_right(find(parcel_right == mycode)) = i;
+        end
+        
+        parcels200 = [parcel_left; parcel_right+1000];
+        parcels200 = parcels200';
+        
+        names200 = [colortablel.struct_names(2:end);colortabler.struct_names(2:end)]
+        
+    end
+     
+    % load surface area and parcellate
+    % use the unsmoothed data for the parcels
+    isthere_ct = zeros(size(HCP_r.Subject));
+    namesct_left = strcat('/FS_surf/', num2str(HCP_r.Subject), '_lh2areaj_fsaverage_1.mgh');
+    namesct_right = strcat('/FS_surf/', num2str(HCP_r.Subject), '_rh2areaj_fsaverage_1.mgh');
+    
+    AREA = zeros(length(HCP_r.Subject),size(SW.coord,2));
+    for i = 1:length(HCP_r.Subject)
+        try
+            AREA(i,1:10242)     = SurfStatReadData1(namesct_left(i,:));
+            AREA(i,10243:20484) = SurfStatReadData1(namesct_right(i,:));
+            isthere_ct(i) = 1;
+        catch
+            disp([namesct_left(i,:) ' not there'])
+        end
+        sum(isthere_ct)/length(isthere_ct)
+    end
+    
+    area200 = []
+    for i = 1:100
+        area200(i,:) = sum(AREA(:,find(parcels200==i+1)),2);
+    end
+    
+    for i = 1:100
+        area200(i+100,:) = sum(AREA(:,find(parcels200==i+1001)),2);
+    end
 
     % save data
-    %csvwrite([DPATH 'CT_200_7.csv'], HCP200_CT);
-    %csvwrite([DPATH 'SA_200_7.csv'], area200');
-    %fid = fopen(['DPATH labels_200_7.csv','w')
-    %fprintf(fid,'%s\n',names200{:,1})
-    %fclose(fid)   
+    csvwrite([DPATH 'CT_200_7.csv'], HCP200_CT);
+    csvwrite([DPATH 'SA_200_7.csv'], area200');
+    fid = fopen(['DPATH labels_200_7.csv','w'])
+    fprintf(fid,'%s\n',names200{:,1})
+    fclose(fid)   
     
 end
     
@@ -182,22 +200,39 @@ end
 %% find missing data and outliers
 for out = 1
     
-    % find participants with missing data
-    studykeep = csvread([dir 'affect_cognition/data/studykeep_indices.csv']);
-    [m1, m2] = find(isnan(list_of_vars(studykeep,:)));
-    studykeep(m1) = [];
-    %studykeep   = mintersect(find(mean(HCP200_CT,2)>0), find(HCP.FS_IntraCranial_Vol>0), find(~isnan(mean(list_of_vars,2))));
+    studykeep = [1:size(HCP,1)]';
     
-    outlier = ones(3,1206);
-    for c = 1:1206
-        r_a = corrcoef(area200(c,:),mean(area200));
-        r_c = corrcoef(HCP200_CT(c,:),mean(HCP200_CT));
-        if r_a(2) < 0.8
+    % how many missing values in each modality?
+    sum(sum(isnan(list_of_vars),2)>0)
+    sum(sum(isnan(subcort_fs{:,:}),2)>0)
+    sum(mean(HCP200_CT,2)==0)
+    sum(mean(area200,2)==0)
+    
+    % find participants with missing data
+    studykeep(sum(isnan(list_of_vars),2)>0) = 0;
+    studykeep(sum(isnan(subcort_fs{:,:}),2)>0) = 0;
+    studykeep(mean(HCP200_CT,2)==0) = 0;
+    studykeep(mean(area200,2)==0) = 0;
+    
+    % find participants with outlier data
+    group_a = mean(area200(mean(area200,2)>0,:));
+    group_c = mean(HCP200_CT(mean(HCP200_CT,2)>0,:));
+    group_s = nanmean(subcort_fs{:,:});
+    
+    outlier = ones(4,size(HCP,1));
+    for c = 1:size(HCP,1)
+        r_a = corrcoef(area200(c,:), group_a);
+        r_c = corrcoef(HCP200_CT(c,:), group_c);
+        r_s = corrcoef(subcort_fs{c,:}, group_s);
+        if r_a(2) < 0.8 || isnan(r_a(2))
             outlier(1,c) = c;
             outlier(2,c) = r_a(2);
-        elseif r_c(2) < 0.8
+        elseif r_c(2) < 0.8 || isnan(r_c(2))
             outlier(1,c) = c;
             outlier(3,c) = r_c(2);
+        elseif r_s(2) < 0.8 || isnan(r_s(2))
+            outlier(1,c) = c;
+            outlier(4,c) = r_c(2);
         else
             continue;
         end
@@ -206,11 +241,58 @@ for out = 1
     out_sa = find(outlier(2,:)<1)
     %outlier in ctx
     out_ct = find(outlier(3,:)<1)
+    %outlier in subc
+    out_subc = find(outlier(4,:)<1)
+    
+    % check outliers visually
+    for o = 1:length(out_sa)
+        ROnSurf = zeros(1,20484);
+        for i = 1:100
+            ROnSurf(:,find(parcels200==i+1)) = area200(out_sa(o),i);
+        end
+        for i = 1:100
+            ROnSurf(:,find(parcels200==i+1001)) = area200(out_sa(o),i+100);
+        end
+        f = figure;
+        BoSurfStatViewData(ROnSurf,SN,'')
+        exportfigbo(f,[RPATH, 'outliers.sa_' num2str(o) '.png'],'png', 10)
+        close(f)
+    end
+    
+    for o = 1:length(out_ct)
+        ROnSurf = zeros(1,20484);
+        for i = 1:100
+            ROnSurf(:,find(parcels200==i+1)) = HCP200_CT(out_ct(o),i);
+        end
+        for i = 1:100
+            ROnSurf(:,find(parcels200==i+1001)) = HCP200_CT(out_ct(o),i+100);
+        end
+        f = figure;
+        BoSurfStatViewData(ROnSurf,SN,'')
+        exportfigbo(f,[RPATH, 'outliers.ctx_' num2str(o) '.png'],'png', 10)
+        close(f)
+    end
     
     % exclude outliers
-    studykeep(find(ismember(studykeep, [out_ct, out_sa]))) = [];
+    studykeep(find(ismember(studykeep, [out_ct, out_sa, out_subc]))) = 0;
+    studykeep(studykeep == 0) = [];
 
 end
+
+%% sample descriptives
+sum(strcmp(HCP.Gender, 'F')) %656
+sum(strcmp(HCP_r.ZygositySR, 'MZ')) %292
+sum(strcmp(HCP_r.ZygositySR, 'NotMZ')) %323
+sum(strcmp(HCP_r.ZygositySR, 'NotTwin')) %586 %5 missing values
+sum(strcmp(HCP.Gender(studykeep), 'F')) %592
+sum(strcmp(HCP.Gender(studykeep), 'M')) %499
+sum(strcmp(HCP_r.ZygositySR(studykeep), 'MZ')) %274
+sum(strcmp(HCP_r.ZygositySR(studykeep), 'NotMZ')) %288
+sum(strcmp(HCP_r.ZygositySR(studykeep), 'NotTwin')) %525 %4 missing values
+mean(HCP_r.Age_in_Yrs(studykeep)) %28.8139
+std(HCP_r.Age_in_Yrs(studykeep)) %3.6977 
+min(HCP_r.Age_in_Yrs(studykeep)) %22
+max(HCP_r.Age_in_Yrs(studykeep)) %37
 
 %% Phenotypic correlation, heritability and genetic correlation of cognition and affect 
 for figure1 = 1
@@ -229,7 +311,6 @@ for figure1 = 1
     aff(studykeep) = mean([nihPA(studykeep)', -nihNA(studykeep)'],2);
     
     
-    
     list_of_vars = [HCP.CogTotalComp_Unadj, HCP.CogFluidComp_Unadj, HCP.CogCrystalComp_Unadj, nihPA', nihNA', aff'];    
     comptitlevar = {'Total Cognition', 'Fluid', 'Crystallized', 'Positive Affect', 'Negative Affect', 'Mean Affect'};
     
@@ -237,9 +318,33 @@ for figure1 = 1
     T = table(mean(list_of_vars(studykeep,:))',std(list_of_vars(studykeep,:))',...
         min(list_of_vars(studykeep,:))',max(list_of_vars(studykeep,:))',...
          'VariableNames', {'Mean','SD','Min','Max'}, 'RowNames',comptitlevar')
-    writetable(T,[RPATH 'Table1.csv']);         
+    writetable(T,[RPATH 'Table1.csv']); 
     
-   
+    
+    % write phenotype tables for genetic analyses
+    % CT
+    T = table(HCP.Subject(studykeep), HCP_r.Age_in_Yrs(studykeep), HCP.Gender(studykeep),...
+        list_of_vars(studykeep,:), mean(HCP200_CT(studykeep,:),2), HCP200_CT(studykeep,:),...
+        'VariableNames', {'id','age','sex','bhv','gb','brain'});
+    T = splitvars(T, 'bhv', 'NewVariableNames', {'totalCog','fluid','crystal','nihPA','nihNA','aff'});
+    T = splitvars(T, 'brain', 'NewVariableNames', names200);
+    writetable(T, [dir '/affect_cognition/solar_CT/cog_affect_CT.csv']);
+    % SA
+    T = table(HCP.Subject(studykeep), HCP_r.Age_in_Yrs(studykeep), HCP.Gender(studykeep),...
+        list_of_vars(studykeep,:), HCP.FS_IntraCranial_Vol(studykeep,:)./1000, area200(studykeep,:),...
+        'VariableNames', {'id','age','sex','bhv','icv','brain'});
+    T = splitvars(T, 'bhv', 'NewVariableNames', {'totalCog','fluid','crystal','nihPA','nihNA','aff'});
+    T = splitvars(T, 'brain', 'NewVariableNames', names200);
+    writetable(T, [dir '/affect_cognition/solar_SA/cog_affect_SA.csv']);  
+    % SUBC
+    T = [table(HCP.Subject(studykeep), HCP_r.Age_in_Yrs(studykeep), HCP.Gender(studykeep),...
+        list_of_vars(studykeep,:), HCP.FS_IntraCranial_Vol(studykeep,:)./1000,...
+        'VariableNames', {'id','age','sex','bhv','icv'}), subcort_fs(studykeep,:)];
+    T = splitvars(T, 'bhv', 'NewVariableNames', {'totalCog','fluid','crystal','nihPA','nihNA','aff'});
+    writetable(T, [dir '/affect_cognition/solar_subc/cog_affect_subcortical.csv']);     
+ 
+    
+    % phenotypic behavioral analyses
     f = figure,
     subplot(1,6,1),
     hist(list_of_vars(studykeep,1))
@@ -264,7 +369,7 @@ for figure1 = 1
         sexk   = cellstr(HCP.Gender(keep));
         sex_num = grp2idx(sexk);
         
-        M    = 1 + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ term(vark);
+        M    = 1 + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ term(vark); %((term(agek) * term(agek)) * term(sexk)) + 
         slm  = SurfStatLinMod(zscore(list_of_vars(keep,:)),M);
         slm  = SurfStatT(slm, vark);
         t_var(i,:) = slm.t;
@@ -317,7 +422,7 @@ for figure1 = 1
         set(gca, 'XTick', 1:(length(list_of_vars)));
         set(gca, 'XTickLabel', comptitlevar)
         xtickangle(-45)
-        colormap(flipud(cbrewer('div','RdBu',99)));
+        colormap(flipud(cbrewer('div','RdBu',121)));
         colorbar;
         set(gca, 'YTick', 1:(length(list_of_vars)));
         set(gca, 'YTickLabel', comptitlevar)
@@ -330,7 +435,7 @@ for figure1 = 1
 
    
    %plot total cognition and mean affect
-   f=figure
+   f=figure;
    scatter(list_of_vars(:,1), list_of_vars(:,6),'.','k')
    l = lsline;
    l.Color = 'k'; 
@@ -349,7 +454,7 @@ for figure1 = 1
     ord = [6 3 2 5 4 1];
     F1b = F1b(ord,:);   
     
-    f = figure,
+    f = figure;
     bar(F1b.H2r)
     set(gca, 'XTickLabel', comptitlevar)
     xtickangle(-45)
@@ -401,7 +506,7 @@ for figure1 = 1
         set(gca, 'XTick', 1:(length(list_of_vars)));
         set(gca, 'XTickLabel', comptitlevar)
         xtickangle(-45)
-        colormap(flipud(cbrewer('div','RdBu',99)));
+        colormap(flipud(cbrewer('div','RdBu',121)));
         colorbar;
         set(gca, 'YTick', 1:(length(list_of_vars)));
         set(gca, 'YTickLabel', comptitlevar)
@@ -430,21 +535,20 @@ for ctx = 1
         sexk   = cellstr(HCP.Gender(keep));
         icv    = HCP.FS_IntraCranial_Vol(keep);
         gb     = mean(HCP200_CT(keep,:),2);
-        sex_num = grp2idx(sexk);
         
-        M    = 1 + term(gb) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ term(vark)
-        slm  = SurfStatLinMod(HCP200_CT(keep,:),M)
-        slm  = SurfStatT(slm, vark)
-        pp   = 1 - tcdf(slm.t, slm.df)
-        pn   = 1 - tcdf(-slm.t, slm.df)
+        M    = 1 + term(gb) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek)) + ((term(agek) * term(agek)) * term(sexk)) + term(vark)
+        slm  = SurfStatLinMod(HCP200_CT(keep,:),M);
+        slm  = SurfStatT(slm, vark);
+        pp   = 1 - tcdf(slm.t, slm.df);
+        pn   = 1 - tcdf(-slm.t, slm.df);
         p= zeros(size(pp));
         p = pp<pn;
         p_all= zeros(size(p));
         p_all(p==1) = pp(p==1);
         p_all(p==0) = pn(p==0);        
         
-        [h1, crit_p, adj_ci_cvrg, adj_p]=fdr_bh(pp,0.025);
-        [h2, crit_p, adj_ci_cvrg, adj_p]=fdr_bh(pn,0.025);
+        [h1, crit_p, adj_ci_cvrg, adj_p]=fdr_bh(pp, 0.025);
+        [h2, crit_p, adj_ci_cvrg, adj_p]=fdr_bh(pn, 0.025);
         
         h = h1+h2;
 
@@ -455,17 +559,16 @@ for ctx = 1
         if max(h) == 1
             p_val = h;
             
-            heri_ct = zeros(1,20484);
+            ROnSurf = zeros(1,20484);
             for i = 1:100
-                heri_ct(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
             end
             for i = 1:100
-                heri_ct(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
             end
-            
-            ctx2 = cbrewer('div','Spectral',10);
+                       
             f = figure;
-            BoSurfStatViewData(heri_ct,SN,'')
+            BoSurfStatViewData(ROnSurf,SN,'')
             colormap(flipud(cbrewer('div','RdBu',11)));
             SurfStatColLim([-3 3])
             exportfigbo(f,[RPATH, 'F2pheno.total.ctx.png'],'png', 10)
@@ -484,13 +587,12 @@ for ctx = 1
         sexk   = cellstr(HCP.Gender(keep));
         icv    = HCP.FS_IntraCranial_Vol(keep);
         gb     = mean(HCP200_CT(keep,:),2);
-        sex_num = grp2idx(sexk);
         
-        M    = 1 + term(gb) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ term(vark)
-        slm  = SurfStatLinMod(HCP200_CT(keep,:),M)
-        slm  = SurfStatT(slm, vark)
-        pp   = 1 - tcdf(slm.t, slm.df)
-        pn   = 1 - tcdf(-slm.t, slm.df)
+        M    = 1 + term(gb) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek)) + ((term(agek) * term(agek)) * term(sexk)) + term(vark)
+        slm  = SurfStatLinMod(HCP200_CT(keep,:),M);
+        slm  = SurfStatT(slm, vark);
+        pp   = 1 - tcdf(slm.t, slm.df);
+        pn   = 1 - tcdf(-slm.t, slm.df);
         p= zeros(size(pp));
         p = pp<pn;
         p_all= zeros(size(p));
@@ -508,17 +610,16 @@ for ctx = 1
         if max(h) == 1
             p_val = h;
             
-            heri_ct = zeros(1,20484);
+            ROnSurf = zeros(1,20484);
             for i = 1:100
-                heri_ct(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
             end
             for i = 1:100
-                heri_ct(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
             end
-            
-            ctx2 = cbrewer('div','Spectral',10);
-            f = figure,
-            BoSurfStatViewData(heri_ct,SN,'')
+                       
+            f = figure;
+            BoSurfStatViewData(ROnSurf,SN,'')
             colormap(flipud(cbrewer('div','RdBu',11)));            
             SurfStatColLim([-3 3])
             exportfigbo(f,[RPATH, 'F2pheno.fluid.ctx.png'],'png', 10)
@@ -537,13 +638,12 @@ for ctx = 1
         sexk   = cellstr(HCP.Gender(keep));
         icv    = HCP.FS_IntraCranial_Vol(keep);
         gb     = mean(HCP200_CT(keep,:),2);
-        sex_num = grp2idx(sexk);
         
-        M    = 1 + term(gb) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ term(vark)
-        slm  = SurfStatLinMod(HCP200_CT(keep,:),M)
-        slm  = SurfStatT(slm, vark)
-        pp   = 1 - tcdf(slm.t, slm.df)
-        pn   = 1 - tcdf(-slm.t, slm.df)
+        M    = 1 + term(gb) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark)
+        slm  = SurfStatLinMod(HCP200_CT(keep,:),M);
+        slm  = SurfStatT(slm, vark);
+        pp   = 1 - tcdf(slm.t, slm.df);
+        pn   = 1 - tcdf(-slm.t, slm.df);
         p= zeros(size(pp));
         p = pp<pn;
         p_all= zeros(size(p));
@@ -562,17 +662,16 @@ for ctx = 1
         if max(h) == 1 
             p_val = h;
             
-            heri_ct = zeros(1,20484);
+            ROnSurf = zeros(1,20484);
             for i = 1:100
-                heri_ct(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
             end
             for i = 1:100
-                heri_ct(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
             end
             
-            ctx2 = cbrewer('div','Spectral',10);
             f = figure;
-            BoSurfStatViewData(heri_ct,SN,'')
+            BoSurfStatViewData(ROnSurf,SN,'')
             colormap(flipud(cbrewer('div','RdBu',11)));            
             SurfStatColLim([-3 3])
             exportfigbo(f,[RPATH, 'F2pheno.crys.ctx.png'],'png', 10)
@@ -593,13 +692,12 @@ for area = 1
         agek   = HCP_r.Age_in_Yrs(keep);
         sexk   = cellstr(HCP.Gender(keep));
         icv    = HCP.FS_IntraCranial_Vol(keep); 
-        sex_num = grp2idx(sexk);
         
-        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ term(vark)
-        slm  = SurfStatLinMod(area200(:,keep)',M)
-        slm  = SurfStatT(slm, vark)
-        pp   = 1 - tcdf(slm.t, slm.df)
-        pn   = 1 - tcdf(-slm.t, slm.df)
+        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark)
+        slm  = SurfStatLinMod(area200(keep,:),M);
+        slm  = SurfStatT(slm, vark);
+        pp   = 1 - tcdf(slm.t, slm.df);
+        pn   = 1 - tcdf(-slm.t, slm.df);
         p= zeros(size(pp));
         p = pp<pn;
         p_all= zeros(size(p));
@@ -619,17 +717,16 @@ for area = 1
           
             p_val = h;
             
-            heri_ct = zeros(1,20484);
+            ROnSurf = zeros(1,20484);
             for i = 1:100
-                heri_ct(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
             end
             for i = 1:100
-                heri_ct(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
             end
             
-            ctx2 = cbrewer('div','Spectral',10);
             f = figure;
-            BoSurfStatViewData(heri_ct,SN,'')
+            BoSurfStatViewData(ROnSurf,SN,'')
             colormap(flipud(cbrewer('div','RdBu',11)));
             SurfStatColLim([-3 3])
             exportfigbo(f,[RPATH, 'F2pheno.total.area.png'],'png', 10)
@@ -647,13 +744,12 @@ for area = 1
         agek   = HCP_r.Age_in_Yrs(keep);
         sexk   = cellstr(HCP.Gender(keep));
         icv    = HCP.FS_IntraCranial_Vol(keep);        
-        sex_num = grp2idx(sexk);
         
-        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ term(vark) 
-        slm  = SurfStatLinMod(area200(:,keep)',M)
-        slm  = SurfStatT(slm, vark)
-        pp   = 1 - tcdf(slm.t, slm.df)
-        pn   = 1 - tcdf(-slm.t, slm.df)
+        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark) 
+        slm  = SurfStatLinMod(area200(keep,:),M);
+        slm  = SurfStatT(slm, vark);
+        pp   = 1 - tcdf(slm.t, slm.df);
+        pn   = 1 - tcdf(-slm.t, slm.df);
         p= zeros(size(pp));
         p = pp<pn;
         p_all= zeros(size(p));
@@ -673,17 +769,16 @@ for area = 1
           
             p_val = h;
             
-            heri_ct = zeros(1,20484);
+            ROnSurf = zeros(1,20484);
             for i = 1:100
-                heri_ct(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
             end
             for i = 1:100
-                heri_ct(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
             end
             
-            ctx2 = cbrewer('div','Spectral',10);
-            f = figure,
-            BoSurfStatViewData(heri_ct,SN,'')
+            f = figure;
+            BoSurfStatViewData(ROnSurf,SN,'')
             colormap(flipud(cbrewer('div','RdBu',11)));
             SurfStatColLim([-3 3])
             exportfigbo(f,[RPATH, 'F2pheno.crys.area.png'],'png', 10)
@@ -701,13 +796,12 @@ for area = 1
         agek   = HCP_r.Age_in_Yrs(keep);
         sexk   = cellstr(HCP.Gender(keep));
         icv    = HCP.FS_IntraCranial_Vol(keep); 
-        sex_num = grp2idx(sexk);
         
-        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ term(vark) 
-        slm  = SurfStatLinMod(area200(:,keep)',M)
-        slm  = SurfStatT(slm, vark)
-        pp   = 1 - tcdf(slm.t, slm.df)
-        pn   = 1 - tcdf(-slm.t, slm.df)
+        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark) 
+        slm  = SurfStatLinMod(area200(keep,:),M);
+        slm  = SurfStatT(slm, vark);
+        pp   = 1 - tcdf(slm.t, slm.df);
+        pn   = 1 - tcdf(-slm.t, slm.df);
         p= zeros(size(pp));
         p = pp<pn;
         p_all= zeros(size(p));
@@ -727,17 +821,16 @@ for area = 1
            
             p_val = h;
             
-            heri_ct = zeros(1,20484);
+            ROnSurf = zeros(1,20484);
             for i = 1:100
-                heri_ct(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
             end
             for i = 1:100
-                heri_ct(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
             end
             
-            ctx2 = cbrewer('div','Spectral',10);
-            f = figure,
-            BoSurfStatViewData(heri_ct,SN,'')
+            f = figure;
+            BoSurfStatViewData(ROnSurf,SN,'')
             colormap(flipud(cbrewer('div','RdBu',11)));
             SurfStatColLim([-3 3])
             exportfigbo(f,[RPATH, 'F2pheno.fluid.area.png'],'png', 10)
@@ -758,13 +851,12 @@ for subcort = 1
         agek   = HCP_r.Age_in_Yrs(keep);
         sexk   = cellstr(HCP.Gender(keep));
         icv    = HCP.FS_IntraCranial_Vol(keep); 
-        sex_num = grp2idx(sexk);
         
-        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ term(vark)
-        slm  = SurfStatLinMod(subcort_fs{keep,:},M)
-        slm  = SurfStatT(slm, vark)
-        pp   = 1 - tcdf(slm.t, slm.df)
-        pn   = 1 - tcdf(-slm.t, slm.df)
+        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark)
+        slm  = SurfStatLinMod(subcort_fs{keep,:},M);
+        slm  = SurfStatT(slm, vark);
+        pp   = 1 - tcdf(slm.t, slm.df);
+        pn   = 1 - tcdf(-slm.t, slm.df);
         p= zeros(size(pp));
         p = pp<pn;
         p_all= zeros(size(p));
@@ -782,10 +874,10 @@ for subcort = 1
        
         if max(h) == 1                    
             
-            f = figure                      
+            f = figure;                      
             bar(slm.t)
-            set(gca, 'XTick', 1:(length(subcort_lina.Properties.VariableNames)));
-            set(gca, 'XTickLabel', subcort_lina.Properties.VariableNames)
+            set(gca, 'XTick', 1:(length(subcort_fs.Properties.VariableNames)));
+            set(gca, 'XTickLabel', subcort_fs.Properties.VariableNames)    
             xtickangle(-45)
             exportfigbo(f,[RPATH, 'F2pheno.total.sub.png'],'png', 10)
             close(f)       
@@ -802,13 +894,12 @@ for subcort = 1
         agek   = HCP_r.Age_in_Yrs(keep);
         sexk   = cellstr(HCP.Gender(keep));
         icv    = HCP.FS_IntraCranial_Vol(keep);        
-        sex_num = grp2idx(sexk);
         
-        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ term(vark)
-        slm  = SurfStatLinMod(subcort_fs{keep,:},M)
-        slm  = SurfStatT(slm, vark)
-        pp   = 1 - tcdf(slm.t, slm.df)
-        pn   = 1 - tcdf(-slm.t, slm.df)
+        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark)
+        slm  = SurfStatLinMod(subcort_fs{keep,:},M);
+        slm  = SurfStatT(slm, vark);
+        pp   = 1 - tcdf(slm.t, slm.df);
+        pn   = 1 - tcdf(-slm.t, slm.df);
         p= zeros(size(pp));
         p = pp<pn;
         p_all= zeros(size(p));
@@ -830,8 +921,8 @@ for subcort = 1
             
             f = figure,
             bar(slm.t)
-            set(gca, 'XTick', 1:(length(subcort_lina.Properties.VariableNames)));
-            set(gca, 'XTickLabel', subcort_lina.Properties.VariableNames)
+            set(gca, 'XTick', 1:(length(subcort_fs.Properties.VariableNames)));
+            set(gca, 'XTickLabel', subcort_fs.Properties.VariableNames)   
             xtickangle(-45)
             exportfigbo(f,[RPATH, 'F2pheno.crys.sub.png'],'png', 10)
             close(f)        
@@ -847,14 +938,12 @@ for subcort = 1
         agek   = HCP_r.Age_in_Yrs(keep);
         sexk   = cellstr(HCP.Gender(keep));
         icv    = HCP.FS_IntraCranial_Vol(keep); 
-        sex_num = grp2idx(sexk);
-
         
-        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ term(vark)
-        slm  = SurfStatLinMod(subcort_fs{keep,:},M)
-        slm  = SurfStatT(slm, vark)
-        pp   = 1 - tcdf(slm.t, slm.df)
-        pn   = 1 - tcdf(-slm.t, slm.df)
+        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark)
+        slm  = SurfStatLinMod(subcort_fs{keep,:},M);
+        slm  = SurfStatT(slm, vark);
+        pp   = 1 - tcdf(slm.t, slm.df);
+        pn   = 1 - tcdf(-slm.t, slm.df);
         p= zeros(size(pp));
         p = pp<pn;
         p_all= zeros(size(p));
@@ -874,10 +963,10 @@ for subcort = 1
            
             p_val = h;
             
-            f = figure,
+            f = figure;
             bar(slm.t)
-            set(gca, 'XTick', 1:(length(subcort_lina.Properties.VariableNames)));
-            set(gca, 'XTickLabel', subcort_lina.Properties.VariableNames)
+            set(gca, 'XTick', 1:(length(subcort_fs.Properties.VariableNames)));
+            set(gca, 'XTickLabel', subcort_fs.Properties.VariableNames)   
             xtickangle(-45)
             exportfigbo(f,[RPATH, 'F2pheno.fluid.sub.png'],'png', 10)
             close(f)                       
@@ -900,13 +989,12 @@ for ctx = 1
         sexk   = cellstr(HCP.Gender(keep));
         icv    = HCP.FS_IntraCranial_Vol(keep);
         gb     = mean(HCP200_CT(keep,:),2);
-        sex_num = grp2idx(sexk);
         
-        M    = 1 + term(gb) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ term(vark)
-        slm  = SurfStatLinMod(HCP200_CT(keep,:),M)
-        slm  = SurfStatT(slm, vark)
-        pp   = 1 - tcdf(slm.t, slm.df)
-        pn   = 1 - tcdf(-slm.t, slm.df)
+        M    = 1 + term(gb) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark)
+        slm  = SurfStatLinMod(HCP200_CT(keep,:),M);
+        slm  = SurfStatT(slm, vark);
+        pp   = 1 - tcdf(slm.t, slm.df);
+        pn   = 1 - tcdf(-slm.t, slm.df);
         p= zeros(size(pp));
         p = pp<pn;
         p_all= zeros(size(p));
@@ -925,17 +1013,16 @@ for ctx = 1
           
             p_val = h;
             
-            heri_ct = zeros(1,20484);
+            ROnSurf = zeros(1,20484);
             for i = 1:100
-                heri_ct(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
             end
             for i = 1:100
-                heri_ct(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
             end
             
-            ctx2 = cbrewer('div','Spectral',10);
-            f = figure,
-            BoSurfStatViewData(heri_ct,SN,'')
+            f = figure;
+            BoSurfStatViewData(ROnSurf,SN,'')
             colormap(flipud(cbrewer('div','RdBu',11)));
             SurfStatColLim([-3 3])
             exportfigbo(f,[RPATH, 'F3pheno.', comptitlevar{j},'.ctx.png'],'png', 10)
@@ -956,13 +1043,12 @@ for area = 1
         agek   = HCP_r.Age_in_Yrs(keep);
         sexk   = cellstr(HCP.Gender(keep));
         icv    = HCP.FS_IntraCranial_Vol(keep);
-        sex_num = grp2idx(sexk);
         
-        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ term(vark)
-        slm  = SurfStatLinMod(area200(:,keep)',M)
-        slm  = SurfStatT(slm, vark)
-        pp   = 1 - tcdf(slm.t, slm.df)
-        pn   = 1 - tcdf(-slm.t, slm.df)
+        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark)
+        slm  = SurfStatLinMod(area200(keep,:),M);
+        slm  = SurfStatT(slm, vark);
+        pp   = 1 - tcdf(slm.t, slm.df);
+        pn   = 1 - tcdf(-slm.t, slm.df);
         p= zeros(size(pp));
         p = pp<pn;
         p_all= zeros(size(p));
@@ -981,17 +1067,16 @@ for area = 1
            
             p_val = h;
             
-            heri_ct = zeros(1,20484);
+            ROnSurf = zeros(1,20484);
             for i = 1:100
-                heri_ct(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
             end
             for i = 1:100
-                heri_ct(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
             end
             
-            ctx2 = cbrewer('div','Spectral',10);
-            f = figure,
-            BoSurfStatViewData(heri_ct,SN,'')
+            f = figure;
+            BoSurfStatViewData(ROnSurf,SN,'')
             colormap(flipud(cbrewer('div','RdBu',11)));            
             SurfStatColLim([-3 3])
             exportfigbo(f,[RPATH, 'F3pheno.', comptitlevar{j},'.area.png'],'png', 10)
@@ -1011,13 +1096,12 @@ for subcort = 1
         agek   = HCP_r.Age_in_Yrs(keep);
         sexk   = cellstr(HCP.Gender(keep));
         icv    = HCP.FS_IntraCranial_Vol(keep);
-        sex_num = grp2idx(sexk);
         
-        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ term(vark)
-        slm  = SurfStatLinMod(subcort_fs{keep,:},M)
-        slm  = SurfStatT(slm, vark)
-        pp   = 1 - tcdf(slm.t, slm.df)
-        pn   = 1 - tcdf(-slm.t, slm.df)
+        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark)
+        slm  = SurfStatLinMod(subcort_fs{keep,:},M);
+        slm  = SurfStatT(slm, vark);
+        pp   = 1 - tcdf(slm.t, slm.df);
+        pn   = 1 - tcdf(-slm.t, slm.df);
         p= zeros(size(pp));
         p = pp<pn;
         p_all= zeros(size(p));
@@ -1035,10 +1119,10 @@ for subcort = 1
        
         if max(h) == 1
             
-            f = figure,
+            f = figure;
             bar(slm.t)
-            set(gca, 'XTick', 1:(length(subcort_lina.Properties.VariableNames)));
-            set(gca, 'XTickLabel', subcort_lina.Properties.VariableNames)
+            set(gca, 'XTick', 1:(length(subcort_fs.Properties.VariableNames)));
+            set(gca, 'XTickLabel', subcort_fs.Properties.VariableNames)   
             xtickangle(-45)
             exportfigbo(f,[RPATH, 'F3pheno.', comptitlevar{j},'.sub.png'],'png', 10)
             close(f) 
@@ -1050,7 +1134,7 @@ for subcort = 1
 end
 
 %% Phenotypic correlation tables
-T = table(pheno.id);
+T = table(HCP.Subject(studykeep));
 writetable(T, [RPATH 'included_ids.csv'], 'WriteRowNames', false)
 
 try
@@ -1066,7 +1150,7 @@ for ctx_post_hoc = 1
         var_ctx_t(5,find(var_ctx_FDR(i,:)==1))',var_ctx_p(5,find(var_ctx_FDR(i,:)==1))',...
         var_ctx_t(6,find(var_ctx_FDR(i,:)==1))',var_ctx_p(6,find(var_ctx_FDR(i,:)==1))',...
         'RowNames',rn);
-     T.Properties.VariableNames([1 3 5 7 9 11]) = comptitlevar
+     T.Properties.VariableNames([1 3 5 7 9 11]) = comptitlevar;
     
      writetable(T, [RPATH 'total_ctx.csv'], 'WriteRowNames', true)
      
@@ -1423,7 +1507,7 @@ try
 for subc_post_hoc = 1
     %% all in total
     i =1
-     rn = subcort_lina.Properties.VariableNames(var_sub_FDR(i,:)==1);
+     rn = subcort_fs.Properties.VariableNames(var_sub_FDR(i,:)==1);
     T= table(var_sub_t(1,find(var_sub_FDR(i,:)==1))',var_sub_p(1,find(var_sub_FDR(i,:)==1))',...
         var_sub_t(2,find(var_sub_FDR(i,:)==1))',var_sub_p(2,find(var_sub_FDR(i,:)==1))',...
         var_sub_t(3,find(var_sub_FDR(i,:)==1))',var_sub_p(3,find(var_sub_FDR(i,:)==1))',...
@@ -1454,7 +1538,7 @@ for subc_post_hoc = 1
     
     %% all in fluid
      i =2
-     rn = subcort_lina.Properties.VariableNames(var_sub_FDR(i,:)==1);
+     rn = subcort_fs.Properties.VariableNames(var_sub_FDR(i,:)==1);
     T= table(var_sub_t(1,find(var_sub_FDR(i,:)==1))',var_sub_p(1,find(var_sub_FDR(i,:)==1))',...
         var_sub_t(2,find(var_sub_FDR(i,:)==1))',var_sub_p(2,find(var_sub_FDR(i,:)==1))',...
         var_sub_t(3,find(var_sub_FDR(i,:)==1))',var_sub_p(3,find(var_sub_FDR(i,:)==1))',...
@@ -1483,7 +1567,7 @@ for subc_post_hoc = 1
      
     %% all in crystallized
     i =3
-     rn = subcort_lina.Properties.VariableNames(var_sub_FDR(i,:)==1);
+     rn = subcort_fs.Properties.VariableNames(var_sub_FDR(i,:)==1);
     T= table(var_sub_t(1,find(var_sub_FDR(i,:)==1))',var_sub_p(1,find(var_sub_FDR(i,:)==1))',...
         var_sub_t(2,find(var_sub_FDR(i,:)==1))',var_sub_p(2,find(var_sub_FDR(i,:)==1))',...
         var_sub_t(3,find(var_sub_FDR(i,:)==1))',var_sub_p(3,find(var_sub_FDR(i,:)==1))',...
@@ -1512,7 +1596,7 @@ for subc_post_hoc = 1
      
     %% all in positive affect
     i =4
-     rn = subcort_lina.Properties.VariableNames(var_sub_FDR(i,:)==1);
+     rn = subcort_fs.Properties.VariableNames(var_sub_FDR(i,:)==1);
     T= table(var_sub_t(1,find(var_sub_FDR(i,:)==1))',var_sub_p(1,find(var_sub_FDR(i,:)==1))',...
         var_sub_t(2,find(var_sub_FDR(i,:)==1))',var_sub_p(2,find(var_sub_FDR(i,:)==1))',...
         var_sub_t(3,find(var_sub_FDR(i,:)==1))',var_sub_p(3,find(var_sub_FDR(i,:)==1))',...
@@ -1542,7 +1626,7 @@ for subc_post_hoc = 1
      
     %% all in negative affect 
     i = 5 %(!!!) 
-     rn = subcort_lina.Properties.VariableNames(var_sub_FDR(i,:)==1);
+     rn = subcort_fs.Properties.VariableNames(var_sub_FDR(i,:)==1);
     T= table(var_sub_t(1,find(var_sub_FDR(i,:)==1))',var_sub_p(1,find(var_sub_FDR(i,:)==1))',...
         var_sub_t(2,find(var_sub_FDR(i,:)==1))',var_sub_p(2,find(var_sub_FDR(i,:)==1))',...
         var_sub_t(3,find(var_sub_FDR(i,:)==1))',var_sub_p(3,find(var_sub_FDR(i,:)==1))',...
@@ -1571,7 +1655,7 @@ for subc_post_hoc = 1
 
      %% all in affect
      i =6 %(!!!) 
-     rn = subcort_lina.Properties.VariableNames(var_sub_FDR(i,:)==1);
+     rn = subcort_fs.Properties.VariableNames(var_sub_FDR(i,:)==1);
     T= table(var_sub_t(1,find(var_sub_FDR(i,:)==1))',var_sub_p(1,find(var_sub_FDR(i,:)==1))',...
         var_sub_t(2,find(var_sub_FDR(i,:)==1))',var_sub_p(2,find(var_sub_FDR(i,:)==1))',...
         var_sub_t(3,find(var_sub_FDR(i,:)==1))',var_sub_p(3,find(var_sub_FDR(i,:)==1))',...
@@ -1676,10 +1760,10 @@ for load_her_area = 1
 end
 
 for load_her_sub = 1
-    sub_her = readtable(['affect_cognition/solar_subc/subc_heritability.csv']);
+    sub_her = readtable([dir 'affect_cognition/solar_subc/subc_heritability.csv']);
     writetable(sub_her,[RPATH 'sub_heritability.csv'], 'WriteRowNames', true);
     
-    [h, crit_p, adj_ci_cvrg, adj_p]=fdr_bh(sub_her{:,4},0.05)
+    [h, crit_p, adj_ci_cvrg, adj_p]=fdr_bh(sub_her{:,4},0.05);
     max(h)
     
     mean(sub_her{:,3})
@@ -1687,8 +1771,8 @@ for load_her_sub = 1
     
     f = figure;
     bar(sub_her{:,3})
-    set(gca, 'XTick', 1:(length(subcort_lina.Properties.VariableNames)));
-    set(gca, 'XTickLabel', subcort_lina.Properties.VariableNames)
+    set(gca, 'XTick', 1:(length(subcort_fs.Properties.VariableNames)));
+    set(gca, 'XTickLabel', subcort_fs.Properties.VariableNames)
     xtickangle(-45)
     exportfigbo(f,[RPATH, 'f2.her.sub.png'],'png', 10)
     close(f)
@@ -1704,7 +1788,7 @@ for load_coher_CTX = 1
        
     
         for t = 1:6
-            if t == 1;
+            if t == 1
                 trait = CTX_CH(1:t*200,:);
             else
                 trait = CTX_CH(((t-1)*200)+1:t*200,:);
@@ -1883,7 +1967,7 @@ for load_coher_sub = 1
             end
                         
             % write table of overlap between phenotypic and genetic corr.
-            rn = subcort_lina.Properties.VariableNames(var_sub_FDR(t,:)==1);
+            rn = subcort_fs.Properties.VariableNames(var_sub_FDR(t,:)==1);
             T = table(trait{find(var_sub_FDR(t,:)==1),4:7},...
              'RowNames',rn);
             %T.Properties.VariableNames([1 2 3 4]) = {'rE' 'rp' 'rG' 'p'};
@@ -1973,7 +2057,7 @@ for fig_s1 = 1
         set(gca, 'XTick', 1:(size(list_of_vars,2)));
         set(gca, 'XTickLabel', comptitlevar)
         xtickangle(-45)
-        colormap(flipud(cbrewer('div','RdBu',99)));
+        colormap(flipud(cbrewer('div','RdBu',121)));
         colorbar;
         set(gca, 'YTick', 1:(size(list_of_vars,2)));
         set(gca, 'YTickLabel', comptitlevar)
@@ -1990,44 +2074,44 @@ for figs2 = 1
         102 204 51; 255 255 51; 255 153 51; 255 102 51; 204 51 0])./255;
     
     % mean thickness on surface
-    heri_ct = zeros(1,20484);
+    ROnSurf = zeros(1,20484);
     for i = 1:100
-        heri_ct(:,find(parcels200==i+1)) = mean(HCP200_CT(studykeep,i));
+        ROnSurf(:,find(parcels200==i+1)) = mean(HCP200_CT(studykeep,i));
     end
     for i = 1:100
-        heri_ct(:,find(parcels200==i+1001)) = mean(HCP200_CT(studykeep,i+100));
+        ROnSurf(:,find(parcels200==i+1001)) = mean(HCP200_CT(studykeep,i+100));
     end
     
-    f = figure,
-    BoSurfStatViewData(heri_ct,SN,'')
+    f = figure;
+    BoSurfStatViewData(ROnSurf,SN,'')
     colormap(buckner)
     SurfStatColLim([1 4])
     exportfigbo(f,[RPATH, 'F0.HCP.ctx.png'],'png', 10)
     close(f)
     
-    f = figure,
+    f = figure;
     hist( mean(HCP200_CT(studykeep,:)))
     exportfigbo(f,[RPATH, 'F0.HCP.total.ctx.png'],'png', 10)
     close(f)
     
     % mean surface area on surface
-    heri_ct = zeros(1,20484);
+    ROnSurf = zeros(1,20484);
     for i = 1:100
-        heri_ct(:,find(parcels200==i+1)) = mean(area200(i,studykeep));
+        ROnSurf(:,find(parcels200==i+1)) = mean(area200(studykeep,i));
     end
     for i = 1:100
-        heri_ct(:,find(parcels200==i+1001)) = mean(area200(i+100,studykeep));
+        ROnSurf(:,find(parcels200==i+1001)) = mean(area200(studykeep,i+100));
     end
     
-    f = figure,
-    BoSurfStatViewData(heri_ct,SN,'')
-    colormap(cbrewer('seq','YlGnBu',99))
+    f = figure;
+    BoSurfStatViewData(ROnSurf,SN,'')
+    colormap(cbrewer('seq','YlGnBu',121))
     SurfStatColLim([500 1700])
     exportfigbo(f,[RPATH, 'F0.area.HCP.png'],'png', 10)
     close(f)
     
-    f = figure,
-    hist( sum(area200(:,studykeep)))
+    f = figure;
+    hist( sum(area200(studykeep,:)))
     exportfigbo(f,[RPATH, 'F0.area.HCP.total.png'],'png', 10)
     close(f)
 end
