@@ -16,7 +16,7 @@ addpath([dir 'utils/misc/'])
 
 DPATH = [dir 'data/HCP/'];                          
 MASKPATH = [P, 'FreeSurfer5.3/fsaverage5/label/'];
-RPATH = ['/projects/cognitive_neurogenetics/affect_cognition/FIG/']; % adapt output directory
+RPATH = [dir '/affect_cognition/FIG/']; % adapt output directory
 
 % freesurfer surfaces 
 S = SurfStatAvSurf({[P 'surfstat_tutorial/fsaverage5/lh.inflated'],[P 'surfstat_tutorial/fsaverage5/rh.inflated']});
@@ -530,15 +530,14 @@ for ctx = 1
     for k = 1
         total  = HCP.CogTotalComp_Unadj;        
         keep   = studykeep;
-        vark   = (total(keep));
-        agek   = HCP_r.Age_in_Yrs(keep);
+        vark   = zscore(total(keep));
+        agek   = zscore(HCP_r.Age_in_Yrs(keep));
         sexk   = cellstr(HCP.Gender(keep));
-        icv    = HCP.FS_IntraCranial_Vol(keep);
-        gb     = mean(HCP200_CT(keep,:),2);
+        gb     = zscore(mean(HCP200_CT(keep,:),2));
         
-        M    = 1 + term(gb) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek)) + ((term(agek) * term(agek)) * term(sexk)) + term(vark)
-        slm  = SurfStatLinMod(HCP200_CT(keep,:),M);
-        slm  = SurfStatT(slm, vark);
+        M    = 1 + term(gb) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek)) + ((term(agek) * term(agek)) * term(sexk)) + term(vark);
+        slm  = SurfStatLinMod(zscore(HCP200_CT(keep,:)),M);
+        slm  = SurfStatT(slm, vark);        
         pp   = 1 - tcdf(slm.t, slm.df);
         pn   = 1 - tcdf(-slm.t, slm.df);
         p= zeros(size(pp));
@@ -552,25 +551,31 @@ for ctx = 1
         
         h = h1+h2;
 
-        var_ctx_t(1,:) = slm.t;
+        var_ctx_t(1,:) = slm.ef; %slm.t; % standardized betas or t-values
+        var_ctx_sd(1,:) = slm.sd;
         var_ctx_p(1,:) = p_all;
         var_ctx_FDR(1,:) = h;
+        %CohD = (slm.t)./sqrt(slm.df);
         
         if max(h) == 1
             p_val = h;
             
             ROnSurf = zeros(1,20484);
             for i = 1:100
-                ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                %ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                ROnSurf(:,find(parcels200==i+1)) = (slm.ef(i)).*(p_val(i));
+                %ROnSurf(:,find(parcels200==i+1)) = (CohD(i)).*(p_val(i));
             end
             for i = 1:100
-                ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                %ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                ROnSurf(:,find(parcels200==i+1001)) = (slm.ef(i+100)).*(p_val(i+100));
+                %ROnSurf(:,find(parcels200==i+1001)) = (CohD(i+100)).*(p_val(i+100));
             end
                        
             f = figure;
             BoSurfStatViewData(ROnSurf,SN,'')
             colormap(flipud(cbrewer('div','RdBu',11)));
-            SurfStatColLim([-3 3])
+            SurfStatColLim([-0.2 0.2])
             exportfigbo(f,[RPATH, 'F2pheno.total.ctx.png'],'png', 10)
             close(f)
             
@@ -580,16 +585,14 @@ for ctx = 1
     % fluid
     for k = 1
         fluid  = HCP.CogFluidComp_Unadj;
-        crys   = HCP.CogCrystalComp_Unadj;
         keep   = studykeep;
-        vark   = (fluid(keep));
-        agek   = HCP_r.Age_in_Yrs(keep);
+        vark   = zscore(fluid(keep));
+        agek   = zscore(HCP_r.Age_in_Yrs(keep));
         sexk   = cellstr(HCP.Gender(keep));
-        icv    = HCP.FS_IntraCranial_Vol(keep);
-        gb     = mean(HCP200_CT(keep,:),2);
+        gb     = zscore(mean(HCP200_CT(keep,:),2));
         
-        M    = 1 + term(gb) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek)) + ((term(agek) * term(agek)) * term(sexk)) + term(vark)
-        slm  = SurfStatLinMod(HCP200_CT(keep,:),M);
+        M    = 1 + term(gb) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek)) + ((term(agek) * term(agek)) * term(sexk)) + term(vark);
+        slm  = SurfStatLinMod(zscore(HCP200_CT(keep,:)),M);
         slm  = SurfStatT(slm, vark);
         pp   = 1 - tcdf(slm.t, slm.df);
         pn   = 1 - tcdf(-slm.t, slm.df);
@@ -603,7 +606,8 @@ for ctx = 1
         [h2, crit_p, adj_ci_cvrg, adj_p]=fdr_bh(pn,0.025);
         
         h = h1+h2;
-        var_ctx_t(2,:) = slm.t;
+        var_ctx_t(2,:) = slm.ef; %slm.t; % standardized betas or t-values
+        var_ctx_sd(2,:) = slm.sd;
         var_ctx_p(2,:) = p_all;
         var_ctx_FDR(2,:) = h;
         
@@ -612,16 +616,18 @@ for ctx = 1
             
             ROnSurf = zeros(1,20484);
             for i = 1:100
-                ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                %ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                ROnSurf(:,find(parcels200==i+1)) = (slm.ef(i)).*(p_val(i));
             end
             for i = 1:100
-                ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                 %ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                 ROnSurf(:,find(parcels200==i+1001)) = (slm.ef(i+100)).*(p_val(i+100));
             end
                        
             f = figure;
             BoSurfStatViewData(ROnSurf,SN,'')
             colormap(flipud(cbrewer('div','RdBu',11)));            
-            SurfStatColLim([-3 3])
+            SurfStatColLim([-0.2 0.2])
             exportfigbo(f,[RPATH, 'F2pheno.fluid.ctx.png'],'png', 10)
             close(f)
             
@@ -630,17 +636,15 @@ for ctx = 1
     end
     % crystallized
     for k = 1
-        fluid  = HCP.CogFluidComp_Unadj; 
         crys   = HCP.CogCrystalComp_Unadj;
         keep   = studykeep;
-        vark   = (crys(keep));
-        agek   = HCP_r.Age_in_Yrs(keep);
+        vark   = zscore(crys(keep));
+        agek   = zscore(HCP_r.Age_in_Yrs(keep));
         sexk   = cellstr(HCP.Gender(keep));
-        icv    = HCP.FS_IntraCranial_Vol(keep);
-        gb     = mean(HCP200_CT(keep,:),2);
+        gb     = zscore(mean(HCP200_CT(keep,:),2));
         
-        M    = 1 + term(gb) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark)
-        slm  = SurfStatLinMod(HCP200_CT(keep,:),M);
+        M    = 1 + term(gb) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark);
+        slm  = SurfStatLinMod(zscore(HCP200_CT(keep,:)),M);
         slm  = SurfStatT(slm, vark);
         pp   = 1 - tcdf(slm.t, slm.df);
         pn   = 1 - tcdf(-slm.t, slm.df);
@@ -655,7 +659,8 @@ for ctx = 1
         
         h = h1+h2;
         
-        var_ctx_t(3,:) = slm.t;
+        var_ctx_t(3,:) = slm.ef; %slm.t; % standardized betas or t-values
+        var_ctx_sd(3,:) = slm.sd;
         var_ctx_p(3,:) = p_all;
         var_ctx_FDR(3,:) = h;
    
@@ -664,16 +669,18 @@ for ctx = 1
             
             ROnSurf = zeros(1,20484);
             for i = 1:100
-                ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                %ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                ROnSurf(:,find(parcels200==i+1)) = (slm.ef(i)).*(p_val(i));
             end
             for i = 1:100
-                ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                %ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                ROnSurf(:,find(parcels200==i+1001)) = (slm.ef(i+100)).*(p_val(i+100));
             end
             
             f = figure;
             BoSurfStatViewData(ROnSurf,SN,'')
             colormap(flipud(cbrewer('div','RdBu',11)));            
-            SurfStatColLim([-3 3])
+            SurfStatColLim([-0.2 0.2])
             exportfigbo(f,[RPATH, 'F2pheno.crys.ctx.png'],'png', 10)
             close(f)
             
@@ -688,13 +695,13 @@ for area = 1
     for k = 1
         total  = HCP.CogTotalComp_Unadj;        
         keep   = studykeep;
-        vark   = (total(keep));
-        agek   = HCP_r.Age_in_Yrs(keep);
+        vark   = zscore(total(keep));
+        agek   = zscore(HCP_r.Age_in_Yrs(keep));
         sexk   = cellstr(HCP.Gender(keep));
-        icv    = HCP.FS_IntraCranial_Vol(keep); 
+        icv    = zscore(HCP.FS_IntraCranial_Vol(keep)); 
         
-        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark)
-        slm  = SurfStatLinMod(area200(keep,:),M);
+        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark);
+        slm  = SurfStatLinMod(zscore(area200(keep,:)),M);
         slm  = SurfStatT(slm, vark);
         pp   = 1 - tcdf(slm.t, slm.df);
         pn   = 1 - tcdf(-slm.t, slm.df);
@@ -709,7 +716,8 @@ for area = 1
         
         h = h1+h2;
         
-        var_area_t(1,:) = slm.t;
+        var_area_t(1,:) = slm.ef; %slm.t;
+        var_area_sd(1,:) = slm.sd;
         var_area_p(1,:) = p_all;
         var_area_FDR(1,:) = h;
        
@@ -719,86 +727,36 @@ for area = 1
             
             ROnSurf = zeros(1,20484);
             for i = 1:100
-                ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                %ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                ROnSurf(:,find(parcels200==i+1)) = (slm.ef(i)).*(p_val(i));
             end
             for i = 1:100
-                ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                %ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                ROnSurf(:,find(parcels200==i+1001)) = (slm.ef(i+100)).*(p_val(i+100));
             end
             
             f = figure;
             BoSurfStatViewData(ROnSurf,SN,'')
             colormap(flipud(cbrewer('div','RdBu',11)));
-            SurfStatColLim([-3 3])
+            SurfStatColLim([-0.2 0.2])
             exportfigbo(f,[RPATH, 'F2pheno.total.area.png'],'png', 10)
             close(f)
             
         end
         
     end
-    % crystallized
-    for k = 1
-        fluid  = HCP.CogFluidComp_Unadj;
-        crys   = HCP.CogCrystalComp_Unadj;
-        keep   = studykeep;
-        vark   = (crys(keep));
-        agek   = HCP_r.Age_in_Yrs(keep);
-        sexk   = cellstr(HCP.Gender(keep));
-        icv    = HCP.FS_IntraCranial_Vol(keep);        
-        
-        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark) 
-        slm  = SurfStatLinMod(area200(keep,:),M);
-        slm  = SurfStatT(slm, vark);
-        pp   = 1 - tcdf(slm.t, slm.df);
-        pn   = 1 - tcdf(-slm.t, slm.df);
-        p= zeros(size(pp));
-        p = pp<pn;
-        p_all= zeros(size(p));
-        p_all(p==1) = pp(p==1);
-        p_all(p==0) = pn(p==0);        
-        
-        [h1, crit_p, adj_ci_cvrg, adj_p]=fdr_bh(pp,0.025);
-        [h2, crit_p, adj_ci_cvrg, adj_p]=fdr_bh(pn,0.025);
-        
-        h = h1+h2;
-        
-        var_area_t(3,:) = slm.t;
-        var_area_p(3,:) = p_all;
-        var_area_FDR(3,:) = h;
-       
-        if max(h) == 1
-          
-            p_val = h;
-            
-            ROnSurf = zeros(1,20484);
-            for i = 1:100
-                ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
-            end
-            for i = 1:100
-                ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
-            end
-            
-            f = figure;
-            BoSurfStatViewData(ROnSurf,SN,'')
-            colormap(flipud(cbrewer('div','RdBu',11)));
-            SurfStatColLim([-3 3])
-            exportfigbo(f,[RPATH, 'F2pheno.crys.area.png'],'png', 10)
-            close(f)
-            
-        end
-        
-    end
+
     % fluid 
     for k = 1
         fluid  = HCP.CogFluidComp_Unadj; 
-        crys   = HCP.CogCrystalComp_Unadj;
         keep   = studykeep;
-        vark   = (fluid(keep));
-        agek   = HCP_r.Age_in_Yrs(keep);
+        vark   = zscore(fluid(keep));
+        agek   = zscore(HCP_r.Age_in_Yrs(keep));
         sexk   = cellstr(HCP.Gender(keep));
-        icv    = HCP.FS_IntraCranial_Vol(keep); 
+        icv    = zscore(HCP.FS_IntraCranial_Vol(keep));
         
-        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark) 
-        slm  = SurfStatLinMod(area200(keep,:),M);
+        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark) ;
+        slm  = SurfStatLinMod(zscore(area200(keep,:)),M);
         slm  = SurfStatT(slm, vark);
         pp   = 1 - tcdf(slm.t, slm.df);
         pn   = 1 - tcdf(-slm.t, slm.df);
@@ -813,7 +771,8 @@ for area = 1
         
         h = h1+h2;
         
-        var_area_t(2,:) = slm.t;
+        var_area_t(2,:) = slm.ef; %slm.t;
+        var_area_sd(2,:) = slm.sd;
         var_area_p(2,:) = p_all;
         var_area_FDR(2,:) = h;
      
@@ -823,37 +782,36 @@ for area = 1
             
             ROnSurf = zeros(1,20484);
             for i = 1:100
-                ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                %ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                ROnSurf(:,find(parcels200==i+1)) = (slm.ef(i)).*(p_val(i));
             end
             for i = 1:100
-                ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                %ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                ROnSurf(:,find(parcels200==i+1001)) = (slm.ef(i+100)).*(p_val(i+100));
             end
             
             f = figure;
             BoSurfStatViewData(ROnSurf,SN,'')
             colormap(flipud(cbrewer('div','RdBu',11)));
-            SurfStatColLim([-3 3])
+            SurfStatColLim([-0.2 0.2])
             exportfigbo(f,[RPATH, 'F2pheno.fluid.area.png'],'png', 10)
             close(f)
             
         end
         
     end
-end
 
-% subcortical voumes
-for subcort = 1
-    % total
+    % crystallized
     for k = 1
-        total  = HCP.CogTotalComp_Unadj;        
+        crys   = HCP.CogCrystalComp_Unadj;
         keep   = studykeep;
-        vark   = (total(keep));
-        agek   = HCP_r.Age_in_Yrs(keep);
+        vark   = zscore(crys(keep));
+        agek   = zscore(HCP_r.Age_in_Yrs(keep));
         sexk   = cellstr(HCP.Gender(keep));
-        icv    = HCP.FS_IntraCranial_Vol(keep); 
+        icv    = zscore(HCP.FS_IntraCranial_Vol(keep));        
         
-        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark)
-        slm  = SurfStatLinMod(subcort_fs{keep,:},M);
+        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark) ;
+        slm  = SurfStatLinMod(zscore(area200(keep,:)),M);
         slm  = SurfStatT(slm, vark);
         pp   = 1 - tcdf(slm.t, slm.df);
         pn   = 1 - tcdf(-slm.t, slm.df);
@@ -868,14 +826,74 @@ for subcort = 1
         
         h = h1+h2;
         
-        var_sub_t(1,:) = slm.t;
+        var_area_t(3,:) = slm.ef; %slm.t;
+        var_area_sd(3,:) = slm.sd;
+        var_area_p(3,:) = p_all;
+        var_area_FDR(3,:) = h;
+       
+        if max(h) == 1
+          
+            p_val = h;
+            
+            ROnSurf = zeros(1,20484);
+            for i = 1:100
+                %ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                ROnSurf(:,find(parcels200==i+1)) = (slm.ef(i)).*(p_val(i));
+            end
+            for i = 1:100
+                %ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                ROnSurf(:,find(parcels200==i+1001)) = (slm.ef(i+100)).*(p_val(i+100));
+            end
+            
+            f = figure;
+            BoSurfStatViewData(ROnSurf,SN,'')
+            colormap(flipud(cbrewer('div','RdBu',11)));
+            SurfStatColLim([-0.2 0.2])
+            exportfigbo(f,[RPATH, 'F2pheno.crys.area.png'],'png', 10)
+            close(f)
+            
+        end
+        
+    end    
+    
+end
+
+% subcortical voumes
+for subcort = 1
+    % total
+    for k = 1
+        total  = HCP.CogTotalComp_Unadj;        
+        keep   = studykeep;
+        vark   = zscore(total(keep));
+        agek   = zscore(HCP_r.Age_in_Yrs(keep));
+        sexk   = cellstr(HCP.Gender(keep));
+        icv    = zscore(HCP.FS_IntraCranial_Vol(keep)); 
+        
+        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark);
+        slm  = SurfStatLinMod(zscore(subcort_fs{keep,:}),M);
+        slm  = SurfStatT(slm, vark);
+        pp   = 1 - tcdf(slm.t, slm.df);
+        pn   = 1 - tcdf(-slm.t, slm.df);
+        p= zeros(size(pp));
+        p = pp<pn;
+        p_all= zeros(size(p));
+        p_all(p==1) = pp(p==1);
+        p_all(p==0) = pn(p==0);        
+        
+        [h1, crit_p, adj_ci_cvrg, adj_p]=fdr_bh(pp,0.025);
+        [h2, crit_p, adj_ci_cvrg, adj_p]=fdr_bh(pn,0.025);
+        
+        h = h1+h2;
+        
+        var_sub_t(1,:) = slm.ef; %slm.t;
+        var_sub_sd(1,:) = slm.sd;
         var_sub_p(1,:) = p_all;
         var_sub_FDR(1,:) = h;
        
         if max(h) == 1                    
             
             f = figure;                      
-            bar(slm.t)
+            bar(slm.ef)
             set(gca, 'XTick', 1:(length(subcort_fs.Properties.VariableNames)));
             set(gca, 'XTickLabel', subcort_fs.Properties.VariableNames)    
             xtickangle(-45)
@@ -885,62 +903,18 @@ for subcort = 1
         end
         
     end
-    % crystallized
-    for k = 1
-        fluid  = HCP.CogFluidComp_Unadj;
-        crys   = HCP.CogCrystalComp_Unadj;
-        keep   = studykeep;
-        vark   = (crys(keep));
-        agek   = HCP_r.Age_in_Yrs(keep);
-        sexk   = cellstr(HCP.Gender(keep));
-        icv    = HCP.FS_IntraCranial_Vol(keep);        
-        
-        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark)
-        slm  = SurfStatLinMod(subcort_fs{keep,:},M);
-        slm  = SurfStatT(slm, vark);
-        pp   = 1 - tcdf(slm.t, slm.df);
-        pn   = 1 - tcdf(-slm.t, slm.df);
-        p= zeros(size(pp));
-        p = pp<pn;
-        p_all= zeros(size(p));
-        p_all(p==1) = pp(p==1);
-        p_all(p==0) = pn(p==0);        
-        
-        [h1, crit_p, adj_ci_cvrg, adj_p]=fdr_bh(pp,0.025);
-        [h2, crit_p, adj_ci_cvrg, adj_p]=fdr_bh(pn,0.025);
-        
-        h = h1+h2;
-        
-        var_sub_t(3,:) = slm.t;
-        var_sub_p(3,:) = p_all;
-        var_sub_FDR(3,:) = h;
-       
-        if max(h) == 1
-           
-            p_val = h;
-            
-            f = figure,
-            bar(slm.t)
-            set(gca, 'XTick', 1:(length(subcort_fs.Properties.VariableNames)));
-            set(gca, 'XTickLabel', subcort_fs.Properties.VariableNames)   
-            xtickangle(-45)
-            exportfigbo(f,[RPATH, 'F2pheno.crys.sub.png'],'png', 10)
-            close(f)        
-            
-        end
-    end
+
     % fluid
     for k = 1
         fluid  = HCP.CogFluidComp_Unadj; 
-        crys   = HCP.CogCrystalComp_Unadj;
         keep   = studykeep;
-        vark   = (fluid(keep));
-        agek   = HCP_r.Age_in_Yrs(keep);
+        vark   = zscore(fluid(keep));
+        agek   = zscore(HCP_r.Age_in_Yrs(keep));
         sexk   = cellstr(HCP.Gender(keep));
-        icv    = HCP.FS_IntraCranial_Vol(keep); 
+        icv    = zscore(HCP.FS_IntraCranial_Vol(keep));  
         
-        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark)
-        slm  = SurfStatLinMod(subcort_fs{keep,:},M);
+        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark);
+        slm  = SurfStatLinMod(zscore(subcort_fs{keep,:}),M);
         slm  = SurfStatT(slm, vark);
         pp   = 1 - tcdf(slm.t, slm.df);
         pn   = 1 - tcdf(-slm.t, slm.df);
@@ -955,7 +929,8 @@ for subcort = 1
         
         h = h1+h2;
         
-        var_sub_t(2,:) = slm.t;
+        var_sub_t(2,:) = slm.ef; %slm.t;
+        var_sub_sd(2,:) = slm.sd;
         var_sub_p(2,:) = p_all;
         var_sub_FDR(2,:) = h;
        
@@ -964,34 +939,78 @@ for subcort = 1
             p_val = h;
             
             f = figure;
-            bar(slm.t)
+            bar(slm.ef)
             set(gca, 'XTick', 1:(length(subcort_fs.Properties.VariableNames)));
             set(gca, 'XTickLabel', subcort_fs.Properties.VariableNames)   
             xtickangle(-45)
             exportfigbo(f,[RPATH, 'F2pheno.fluid.sub.png'],'png', 10)
             close(f)                       
             
-        end
-        
+        end        
     end
+    
+    % crystallized
+    for k = 1
+        crys   = HCP.CogCrystalComp_Unadj;
+        keep   = studykeep;
+        vark   = zscore(crys(keep));
+        agek   = zscore(HCP_r.Age_in_Yrs(keep));
+        sexk   = cellstr(HCP.Gender(keep));
+        icv    = zscore(HCP.FS_IntraCranial_Vol(keep));        
+        
+        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark);
+        slm  = SurfStatLinMod(subcort_fs{keep,:},M);
+        slm  = SurfStatT(slm, vark);
+        pp   = 1 - tcdf(slm.t, slm.df);
+        pn   = 1 - tcdf(-slm.t, slm.df);
+        p= zeros(size(pp));
+        p = pp<pn;
+        p_all= zeros(size(p));
+        p_all(p==1) = pp(p==1);
+        p_all(p==0) = pn(p==0);        
+        
+        [h1, crit_p, adj_ci_cvrg, adj_p]=fdr_bh(pp,0.025);
+        [h2, crit_p, adj_ci_cvrg, adj_p]=fdr_bh(pn,0.025);
+        
+        h = h1+h2;
+        
+        var_sub_t(3,:) = slm.ef; %slm.t;
+        var_sub_sd(3,:) = slm.sd;
+        var_sub_p(3,:) = p_all;
+        var_sub_FDR(3,:) = h;
+       
+        if max(h) == 1
+           
+            p_val = h;
+            
+            f = figure;
+            bar(slm.ef)
+            set(gca, 'XTick', 1:(length(subcort_fs.Properties.VariableNames)));
+            set(gca, 'XTickLabel', subcort_fs.Properties.VariableNames)   
+            xtickangle(-45)
+            exportfigbo(f,[RPATH, 'F2pheno.crys.sub.png'],'png', 10)
+            close(f)        
+            
+        end
+    end    
+    
 end
 
 %% Phenotypic correlation of affect and brain structure
-% affect: mean affect, positive affect, negative affect
+% affect: positive affect, negative affect, mean affect
 
 % cortical thickness
 for ctx = 1
     for j = 4:6
         vary  =  list_of_vars(:,j);
         keep   = studykeep;
-        vark   = (vary(keep));
-        agek   = HCP_r.Age_in_Yrs(keep);
+        vark   = zscore(vary(keep));
+        agek   = zscore(HCP_r.Age_in_Yrs(keep));
         sexk   = cellstr(HCP.Gender(keep));
-        icv    = HCP.FS_IntraCranial_Vol(keep);
-        gb     = mean(HCP200_CT(keep,:),2);
+        gb     = zscore(mean(HCP200_CT(keep,:),2));
         
-        M    = 1 + term(gb) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark)
-        slm  = SurfStatLinMod(HCP200_CT(keep,:),M);
+        M    = 1 + term(gb) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark);
+        slm  = SurfStatLinMod(zscore(HCP200_CT(keep,:)),M);
         slm  = SurfStatT(slm, vark);
         pp   = 1 - tcdf(slm.t, slm.df);
         pn   = 1 - tcdf(-slm.t, slm.df);
@@ -1008,28 +1027,31 @@ for ctx = 1
         
         var_ctx_FDR(j,:) = h;
         var_ctx_p(j,:) = p_all;
-        var_ctx_t(j,:) = slm.t; 
+        var_ctx_t(j,:) = slm.ef; %slm.t;
+        var_ctx_sd(j,:) = slm.sd;
+        
         if max(h) == 1
           
             p_val = h;
             
             ROnSurf = zeros(1,20484);
             for i = 1:100
-                ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                %ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                ROnSurf(:,find(parcels200==i+1)) = (slm.ef(i)).*(p_val(i));
             end
             for i = 1:100
-                ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                %ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                ROnSurf(:,find(parcels200==i+1001)) = (slm.ef(i+100)).*(p_val(i+100));
             end
             
             f = figure;
             BoSurfStatViewData(ROnSurf,SN,'')
             colormap(flipud(cbrewer('div','RdBu',11)));
-            SurfStatColLim([-3 3])
+            SurfStatColLim([-0.2 0.2])
             exportfigbo(f,[RPATH, 'F3pheno.', comptitlevar{j},'.ctx.png'],'png', 10)
             close(f)
             
-        end
-        
+        end        
     end
 
 end
@@ -1039,13 +1061,13 @@ for area = 1
     for j = 4:6
         vary  =  list_of_vars(:,j);
         keep   = studykeep;
-        vark   = (vary(keep));
-        agek   = HCP_r.Age_in_Yrs(keep);
+        vark   = zscore(vary(keep));
+        agek   = zscore(HCP_r.Age_in_Yrs(keep));
         sexk   = cellstr(HCP.Gender(keep));
-        icv    = HCP.FS_IntraCranial_Vol(keep);
+        icv    = zscore(HCP.FS_IntraCranial_Vol(keep));
         
-        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark)
-        slm  = SurfStatLinMod(area200(keep,:),M);
+        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark);
+        slm  = SurfStatLinMod(zscore(area200(keep,:)),M);
         slm  = SurfStatT(slm, vark);
         pp   = 1 - tcdf(slm.t, slm.df);
         pn   = 1 - tcdf(-slm.t, slm.df);
@@ -1062,23 +1084,27 @@ for area = 1
         
         var_area_FDR(j,:) = h;
         var_area_p(j,:) = p_all;
-        var_area_t(j,:) = slm.t; 
+        var_area_t(j,:) = slm.ef; %slm.t;
+        var_area_sd(j,:) = slm.sd;
+        
         if max(h) == 1
            
             p_val = h;
             
             ROnSurf = zeros(1,20484);
             for i = 1:100
-                ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                %ROnSurf(:,find(parcels200==i+1)) = (slm.t(i)).*(p_val(i));
+                ROnSurf(:,find(parcels200==i+1)) = (slm.ef(i)).*(p_val(i));
             end
             for i = 1:100
-                ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                %ROnSurf(:,find(parcels200==i+1001)) = (slm.t(i+100)).*(p_val(i+100));
+                ROnSurf(:,find(parcels200==i+1001)) = (slm.ef(i+100)).*(p_val(i+100));
             end
             
             f = figure;
             BoSurfStatViewData(ROnSurf,SN,'')
             colormap(flipud(cbrewer('div','RdBu',11)));            
-            SurfStatColLim([-3 3])
+            SurfStatColLim([-0.2 0.2])
             exportfigbo(f,[RPATH, 'F3pheno.', comptitlevar{j},'.area.png'],'png', 10)
             close(f)
             
@@ -1092,13 +1118,13 @@ for subcort = 1
     for j = 4:6
         vary  =  list_of_vars(:,j);
         keep   = studykeep;
-        vark   = (vary(keep));
-        agek   = HCP_r.Age_in_Yrs(keep);
+        vark   = zscore(vary(keep));
+        agek   = zscore(HCP_r.Age_in_Yrs(keep));
         sexk   = cellstr(HCP.Gender(keep));
-        icv    = HCP.FS_IntraCranial_Vol(keep);
+        icv    = zscore(HCP.FS_IntraCranial_Vol(keep));
         
-        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark)
-        slm  = SurfStatLinMod(subcort_fs{keep,:},M);
+        M    = 1 + term(icv) + term(agek) + term(sexk) + (term(agek) * term(sexk)) + (term(agek) * term(agek))+ ((term(agek) * term(agek)) * term(sexk)) + term(vark);
+        slm  = SurfStatLinMod(zscore(subcort_fs{keep,:}),M);
         slm  = SurfStatT(slm, vark);
         pp   = 1 - tcdf(slm.t, slm.df);
         pn   = 1 - tcdf(-slm.t, slm.df);
@@ -1113,14 +1139,15 @@ for subcort = 1
         
         h = h1+h2;
         
-        var_sub_t(j,:) = slm.t;
+        var_sub_t(j,:) = slm.ef; %slm.t;
+        var_sub_sd(j,:) = slm.sd;
         var_sub_p(j,:) = p_all;
         var_sub_FDR(j,:) = h;
        
         if max(h) == 1
             
             f = figure;
-            bar(slm.t)
+            bar(slm.ef)
             set(gca, 'XTick', 1:(length(subcort_fs.Properties.VariableNames)));
             set(gca, 'XTickLabel', subcort_fs.Properties.VariableNames)   
             xtickangle(-45)
@@ -1141,18 +1168,18 @@ try
     
 for ctx_post_hoc = 1
     %% all in total cognition
-    i =1
-     rn = names200(var_ctx_FDR(i,:)==1)
-    T= table(var_ctx_t(1,find(var_ctx_FDR(i,:)==1))',var_ctx_p(1,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(2,find(var_ctx_FDR(i,:)==1))',var_ctx_p(2,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(3,find(var_ctx_FDR(i,:)==1))',var_ctx_p(3,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(4,find(var_ctx_FDR(i,:)==1))',var_ctx_p(4,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(5,find(var_ctx_FDR(i,:)==1))',var_ctx_p(5,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(6,find(var_ctx_FDR(i,:)==1))',var_ctx_p(6,find(var_ctx_FDR(i,:)==1))',...
+    i = 1;
+    rn = names200(var_ctx_FDR(i,:)==1);
+    T= table(var_ctx_t(1,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(1,find(var_ctx_FDR(i,:)==1))',var_ctx_p(1,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(2,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(2,find(var_ctx_FDR(i,:)==1))',var_ctx_p(2,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(3,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(3,find(var_ctx_FDR(i,:)==1))',var_ctx_p(3,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(4,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(4,find(var_ctx_FDR(i,:)==1))',var_ctx_p(4,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(5,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(5,find(var_ctx_FDR(i,:)==1))',var_ctx_p(5,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(6,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(6,find(var_ctx_FDR(i,:)==1))',var_ctx_p(6,find(var_ctx_FDR(i,:)==1))',...
         'RowNames',rn);
-     T.Properties.VariableNames([1 3 5 7 9 11]) = comptitlevar;
+    T.Properties.VariableNames([1 4 7 10 13 15]) = comptitlevar;
     
-     writetable(T, [RPATH 'total_ctx.csv'], 'WriteRowNames', true)
+    writetable(T, [RPATH 'total_ctx.csv'], 'WriteRowNames', true)
      
     mltableObj = MATLABTable(T);
     th = mltableObj.Header;
@@ -1171,18 +1198,18 @@ for ctx_post_hoc = 1
      
     
     %% all in fluid
-     i =2
-     rn = names200(var_ctx_FDR(i,:)==1)
-    T= table(var_ctx_t(1,find(var_ctx_FDR(i,:)==1))',var_ctx_p(1,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(2,find(var_ctx_FDR(i,:)==1))',var_ctx_p(2,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(3,find(var_ctx_FDR(i,:)==1))',var_ctx_p(3,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(4,find(var_ctx_FDR(i,:)==1))',var_ctx_p(4,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(5,find(var_ctx_FDR(i,:)==1))',var_ctx_p(5,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(6,find(var_ctx_FDR(i,:)==1))',var_ctx_p(6,find(var_ctx_FDR(i,:)==1))',...
-        'RowNames',rn)
-   T.Properties.VariableNames([1 3 5 7 9 11]) = comptitlevar;
+    i = 2;
+    rn = names200(var_ctx_FDR(i,:)==1);
+    T= table(var_ctx_t(1,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(1,find(var_ctx_FDR(i,:)==1))',var_ctx_p(1,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(2,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(2,find(var_ctx_FDR(i,:)==1))',var_ctx_p(2,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(3,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(3,find(var_ctx_FDR(i,:)==1))',var_ctx_p(3,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(4,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(4,find(var_ctx_FDR(i,:)==1))',var_ctx_p(4,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(5,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(5,find(var_ctx_FDR(i,:)==1))',var_ctx_p(5,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(6,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(6,find(var_ctx_FDR(i,:)==1))',var_ctx_p(6,find(var_ctx_FDR(i,:)==1))',...
+        'RowNames',rn);
+    T.Properties.VariableNames([1 4 7 10 13 15]) = comptitlevar;
     
-     writetable(T, [RPATH 'fluid_ctx.csv'], 'WriteRowNames', true)
+    writetable(T, [RPATH 'fluid_ctx.csv'], 'WriteRowNames', true)
      
     mltableObj = MATLABTable(T);
     th = mltableObj.Header;
@@ -1201,18 +1228,18 @@ for ctx_post_hoc = 1
      
      
     %% all in crystallized
-    i =3
-     rn = names200(var_ctx_FDR(i,:)==1)
-    T= table(var_ctx_t(1,find(var_ctx_FDR(i,:)==1))',var_ctx_p(1,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(2,find(var_ctx_FDR(i,:)==1))',var_ctx_p(2,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(3,find(var_ctx_FDR(i,:)==1))',var_ctx_p(3,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(4,find(var_ctx_FDR(i,:)==1))',var_ctx_p(4,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(5,find(var_ctx_FDR(i,:)==1))',var_ctx_p(5,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(6,find(var_ctx_FDR(i,:)==1))',var_ctx_p(6,find(var_ctx_FDR(i,:)==1))',...
-        'RowNames',rn)
-   T.Properties.VariableNames([1 3 5 7 9 11]) = comptitlevar;
+    i = 3;
+    rn = names200(var_ctx_FDR(i,:)==1);
+    T= table(var_ctx_t(1,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(1,find(var_ctx_FDR(i,:)==1))',var_ctx_p(1,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(2,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(2,find(var_ctx_FDR(i,:)==1))',var_ctx_p(2,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(3,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(3,find(var_ctx_FDR(i,:)==1))',var_ctx_p(3,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(4,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(4,find(var_ctx_FDR(i,:)==1))',var_ctx_p(4,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(5,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(5,find(var_ctx_FDR(i,:)==1))',var_ctx_p(5,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(6,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(6,find(var_ctx_FDR(i,:)==1))',var_ctx_p(6,find(var_ctx_FDR(i,:)==1))',...
+        'RowNames',rn);
+    T.Properties.VariableNames([1 4 7 10 13 15]) = comptitlevar;
     
-     writetable(T, [RPATH 'crystal_ctx.csv'], 'WriteRowNames', true)
+    writetable(T, [RPATH 'crystal_ctx.csv'], 'WriteRowNames', true)
      
     mltableObj = MATLABTable(T);
     th = mltableObj.Header;
@@ -1231,18 +1258,18 @@ for ctx_post_hoc = 1
           
      
     %% all in positive affect
-    i =4
-     rn = names200(var_ctx_FDR(i,:)==1)
-    T= table(var_ctx_t(1,find(var_ctx_FDR(i,:)==1))',var_ctx_p(1,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(2,find(var_ctx_FDR(i,:)==1))',var_ctx_p(2,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(3,find(var_ctx_FDR(i,:)==1))',var_ctx_p(3,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(4,find(var_ctx_FDR(i,:)==1))',var_ctx_p(4,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(5,find(var_ctx_FDR(i,:)==1))',var_ctx_p(5,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(6,find(var_ctx_FDR(i,:)==1))',var_ctx_p(6,find(var_ctx_FDR(i,:)==1))',...
-        'RowNames',rn)
-   T.Properties.VariableNames([1 3 5 7 9 11]) = comptitlevar;
+    i = 4;
+    rn = names200(var_ctx_FDR(i,:)==1);
+    T= table(var_ctx_t(1,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(1,find(var_ctx_FDR(i,:)==1))',var_ctx_p(1,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(2,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(2,find(var_ctx_FDR(i,:)==1))',var_ctx_p(2,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(3,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(3,find(var_ctx_FDR(i,:)==1))',var_ctx_p(3,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(4,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(4,find(var_ctx_FDR(i,:)==1))',var_ctx_p(4,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(5,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(5,find(var_ctx_FDR(i,:)==1))',var_ctx_p(5,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(6,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(6,find(var_ctx_FDR(i,:)==1))',var_ctx_p(6,find(var_ctx_FDR(i,:)==1))',...
+        'RowNames',rn);
+    T.Properties.VariableNames([1 4 7 10 13 15]) = comptitlevar;
     
-     writetable(T, [RPATH 'nihPA_ctx.csv'], 'WriteRowNames', true)
+    writetable(T, [RPATH 'nihPA_ctx.csv'], 'WriteRowNames', true)
 
     mltableObj = MATLABTable(T);
     th = mltableObj.Header;
@@ -1260,16 +1287,16 @@ for ctx_post_hoc = 1
 %     rptview(d);     
 
     %% all in negative affect 
-    i =5 %(!!!) 
-     rn = names200(var_ctx_FDR(i,:)==1)
-    T = table(var_ctx_t(1,find(var_ctx_FDR(i,:)==1))',var_ctx_p(1,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(2,find(var_ctx_FDR(i,:)==1))',var_ctx_p(2,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(3,find(var_ctx_FDR(i,:)==1))',var_ctx_p(3,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(4,find(var_ctx_FDR(i,:)==1))',var_ctx_p(4,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(5,find(var_ctx_FDR(i,:)==1))',var_ctx_p(5,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(6,find(var_ctx_FDR(i,:)==1))',var_ctx_p(6,find(var_ctx_FDR(i,:)==1))',...
-        'RowNames',rn)
-    T.Properties.VariableNames([1 3 5 7 9 11]) = comptitlevar;
+    i = 5; %(!!!) 
+    rn = names200(var_ctx_FDR(i,:)==1);
+    T= table(var_ctx_t(1,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(1,find(var_ctx_FDR(i,:)==1))',var_ctx_p(1,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(2,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(2,find(var_ctx_FDR(i,:)==1))',var_ctx_p(2,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(3,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(3,find(var_ctx_FDR(i,:)==1))',var_ctx_p(3,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(4,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(4,find(var_ctx_FDR(i,:)==1))',var_ctx_p(4,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(5,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(5,find(var_ctx_FDR(i,:)==1))',var_ctx_p(5,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(6,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(6,find(var_ctx_FDR(i,:)==1))',var_ctx_p(6,find(var_ctx_FDR(i,:)==1))',...
+        'RowNames',rn);
+    T.Properties.VariableNames([1 4 7 10 13 15]) = comptitlevar;
     
      writetable(T, [RPATH 'nihNA_ctx.csv'], 'WriteRowNames', true)
  
@@ -1289,18 +1316,18 @@ for ctx_post_hoc = 1
 %     rptview(d);      
      
      %% all in affect
-     i =6 %(!!!) 
-     rn = names200(var_ctx_FDR(i,:)==1)
-    T = table(var_ctx_t(1,find(var_ctx_FDR(i,:)==1))',var_ctx_p(1,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(2,find(var_ctx_FDR(i,:)==1))',var_ctx_p(2,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(3,find(var_ctx_FDR(i,:)==1))',var_ctx_p(3,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(4,find(var_ctx_FDR(i,:)==1))',var_ctx_p(4,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(5,find(var_ctx_FDR(i,:)==1))',var_ctx_p(5,find(var_ctx_FDR(i,:)==1))',...
-        var_ctx_t(6,find(var_ctx_FDR(i,:)==1))',var_ctx_p(6,find(var_ctx_FDR(i,:)==1))',...
-        'RowNames',rn)
-    T.Properties.VariableNames([1 3 5 7 9 11]) = comptitlevar;
+    i = 6; %(!!!) 
+    rn = names200(var_ctx_FDR(i,:)==1);
+    T = table(var_ctx_t(1,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(1,find(var_ctx_FDR(i,:)==1))',var_ctx_p(1,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(2,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(2,find(var_ctx_FDR(i,:)==1))',var_ctx_p(2,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(3,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(3,find(var_ctx_FDR(i,:)==1))',var_ctx_p(3,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(4,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(4,find(var_ctx_FDR(i,:)==1))',var_ctx_p(4,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(5,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(5,find(var_ctx_FDR(i,:)==1))',var_ctx_p(5,find(var_ctx_FDR(i,:)==1))',...
+        var_ctx_t(6,find(var_ctx_FDR(i,:)==1))',var_ctx_sd(6,find(var_ctx_FDR(i,:)==1))',var_ctx_p(6,find(var_ctx_FDR(i,:)==1))',...
+        'RowNames',rn);
+    T.Properties.VariableNames([1 4 7 10 13 15]) = comptitlevar;
     
-     writetable(T, [RPATH 'aff_ctx.csv'], 'WriteRowNames', true)
+    writetable(T, [RPATH 'aff_ctx.csv'], 'WriteRowNames', true)
      
     mltableObj = MATLABTable(T);
     th = mltableObj.Header;
@@ -1326,17 +1353,18 @@ end
 try
 for area_post_hoc = 1
     %% all in total
-     rn = names200(var_area_FDR(1,:)==1)
-     T = table(var_area_t(1,find(var_area_FDR(1,:)==1))',var_area_p(1,find(var_area_FDR(1,:)==1))',...
-        var_area_t(2,find(var_area_FDR(1,:)==1))',var_area_p(2,find(var_area_FDR(1,:)==1))',...
-        var_area_t(3,find(var_area_FDR(1,:)==1))',var_area_p(3,find(var_area_FDR(1,:)==1))',...
-        var_area_t(4,find(var_area_FDR(1,:)==1))',var_area_p(4,find(var_area_FDR(1,:)==1))',...
-        var_area_t(5,find(var_area_FDR(1,:)==1))',var_area_p(5,find(var_area_FDR(1,:)==1))',...
-        var_area_t(6,find(var_area_FDR(1,:)==1))',var_area_p(6,find(var_area_FDR(1,:)==1))',...
-        'RowNames',rn)
-    T.Properties.VariableNames([1 3 5 7 9 11]) = comptitlevar;
+    i = 1;
+    rn = names200(var_area_FDR(i,:)==1);
+    T = table(var_area_t(1,find(var_area_FDR(i,:)==1))',var_area_sd(1,find(var_area_FDR(i,:)==1))',var_area_p(1,find(var_area_FDR(i,:)==1))',...
+        var_area_t(2,find(var_area_FDR(i,:)==1))',var_area_sd(2,find(var_area_FDR(i,:)==1))',var_area_p(2,find(var_area_FDR(i,:)==1))',...
+        var_area_t(3,find(var_area_FDR(i,:)==1))',var_area_sd(3,find(var_area_FDR(i,:)==1))',var_area_p(3,find(var_area_FDR(i,:)==1))',...
+        var_area_t(4,find(var_area_FDR(i,:)==1))',var_area_sd(4,find(var_area_FDR(i,:)==1))',var_area_p(4,find(var_area_FDR(i,:)==1))',...
+        var_area_t(5,find(var_area_FDR(i,:)==1))',var_area_sd(5,find(var_area_FDR(i,:)==1))',var_area_p(5,find(var_area_FDR(i,:)==1))',...
+        var_area_t(6,find(var_area_FDR(i,:)==1))',var_area_sd(6,find(var_area_FDR(i,:)==1))',var_area_p(6,find(var_area_FDR(i,:)==1))',...
+        'RowNames',rn);
+    T.Properties.VariableNames([1 4 7 10 13 15]) = comptitlevar;
    
-      writetable(T, [RPATH 'total_area.csv'], 'WriteRowNames', true)
+    writetable(T, [RPATH 'total_area.csv'], 'WriteRowNames', true)
       
     mltableObj = MATLABTable(T);
     th = mltableObj.Header;
@@ -1353,19 +1381,19 @@ for area_post_hoc = 1
     close(d);
 %     rptview(d);       
  
-    %% all in fluid IQ
-    i =2
-       rn = names200(var_area_FDR(2,:)==1)
-    T = table(var_area_t(1,find(var_area_FDR(i,:)==1))',var_area_p(1,find(var_area_FDR(i,:)==1))',...
-        var_area_t(2,find(var_area_FDR(i,:)==1))',var_area_p(2,find(var_area_FDR(i,:)==1))',...
-        var_area_t(3,find(var_area_FDR(i,:)==1))',var_area_p(3,find(var_area_FDR(i,:)==1))',...
-        var_area_t(4,find(var_area_FDR(i,:)==1))',var_area_p(4,find(var_area_FDR(i,:)==1))',...
-        var_area_t(5,find(var_area_FDR(i,:)==1))',var_area_p(5,find(var_area_FDR(i,:)==1))',...
-        var_area_t(6,find(var_area_FDR(i,:)==1))',var_area_p(6,find(var_area_FDR(i,:)==1))',...
-        'RowNames',rn)
-     T.Properties.VariableNames([1 3 5 7 9 11]) = comptitlevar;
+    %% all in fluid
+    i = 2;
+    rn = names200(var_area_FDR(i,:)==1);
+    T = table(var_area_t(1,find(var_area_FDR(i,:)==1))',var_area_sd(1,find(var_area_FDR(i,:)==1))',var_area_p(1,find(var_area_FDR(i,:)==1))',...
+        var_area_t(2,find(var_area_FDR(i,:)==1))',var_area_sd(2,find(var_area_FDR(i,:)==1))',var_area_p(2,find(var_area_FDR(i,:)==1))',...
+        var_area_t(3,find(var_area_FDR(i,:)==1))',var_area_sd(3,find(var_area_FDR(i,:)==1))',var_area_p(3,find(var_area_FDR(i,:)==1))',...
+        var_area_t(4,find(var_area_FDR(i,:)==1))',var_area_sd(4,find(var_area_FDR(i,:)==1))',var_area_p(4,find(var_area_FDR(i,:)==1))',...
+        var_area_t(5,find(var_area_FDR(i,:)==1))',var_area_sd(5,find(var_area_FDR(i,:)==1))',var_area_p(5,find(var_area_FDR(i,:)==1))',...
+        var_area_t(6,find(var_area_FDR(i,:)==1))',var_area_sd(6,find(var_area_FDR(i,:)==1))',var_area_p(6,find(var_area_FDR(i,:)==1))',...
+        'RowNames',rn);
+    T.Properties.VariableNames([1 4 7 10 13 15]) = comptitlevar;
     
-     writetable(T, [RPATH 'fluid_area.csv'], 'WriteRowNames', true)
+    writetable(T, [RPATH 'fluid_area.csv'], 'WriteRowNames', true)
      
     mltableObj = MATLABTable(T);
     th = mltableObj.Header;
@@ -1383,16 +1411,16 @@ for area_post_hoc = 1
 %     rptview(d);      
  
     %% all in crystallized
-    i =3
-       rn = names200(var_area_FDR(3,:)==1)
-    T = table(var_area_t(1,find(var_area_FDR(i,:)==1))',var_area_p(1,find(var_area_FDR(i,:)==1))',...
-        var_area_t(2,find(var_area_FDR(i,:)==1))',var_area_p(2,find(var_area_FDR(i,:)==1))',...
-        var_area_t(3,find(var_area_FDR(i,:)==1))',var_area_p(3,find(var_area_FDR(i,:)==1))',...
-        var_area_t(4,find(var_area_FDR(i,:)==1))',var_area_p(4,find(var_area_FDR(i,:)==1))',...
-        var_area_t(5,find(var_area_FDR(i,:)==1))',var_area_p(5,find(var_area_FDR(i,:)==1))',...
-        var_area_t(6,find(var_area_FDR(i,:)==1))',var_area_p(6,find(var_area_FDR(i,:)==1))',...
-        'RowNames',rn)
-    T.Properties.VariableNames([1 3 5 7 9 11]) = comptitlevar;
+    i = 3;
+    rn = names200(var_area_FDR(i,:)==1);
+    T = table(var_area_t(1,find(var_area_FDR(i,:)==1))',var_area_sd(1,find(var_area_FDR(i,:)==1))',var_area_p(1,find(var_area_FDR(i,:)==1))',...
+        var_area_t(2,find(var_area_FDR(i,:)==1))',var_area_sd(2,find(var_area_FDR(i,:)==1))',var_area_p(2,find(var_area_FDR(i,:)==1))',...
+        var_area_t(3,find(var_area_FDR(i,:)==1))',var_area_sd(3,find(var_area_FDR(i,:)==1))',var_area_p(3,find(var_area_FDR(i,:)==1))',...
+        var_area_t(4,find(var_area_FDR(i,:)==1))',var_area_sd(4,find(var_area_FDR(i,:)==1))',var_area_p(4,find(var_area_FDR(i,:)==1))',...
+        var_area_t(5,find(var_area_FDR(i,:)==1))',var_area_sd(5,find(var_area_FDR(i,:)==1))',var_area_p(5,find(var_area_FDR(i,:)==1))',...
+        var_area_t(6,find(var_area_FDR(i,:)==1))',var_area_sd(6,find(var_area_FDR(i,:)==1))',var_area_p(6,find(var_area_FDR(i,:)==1))',...
+        'RowNames',rn);
+    T.Properties.VariableNames([1 4 7 10 13 15]) = comptitlevar;
     
     writetable(T, [RPATH 'crystal_area.csv'], 'WriteRowNames', true)
     
@@ -1412,18 +1440,18 @@ for area_post_hoc = 1
 %     rptview(d);     
 
     %% all in positive affect
-    i =4
-     rn = names200(var_area_FDR(i,:)==1)
-    T= table(var_ctx_t(1,find(var_area_FDR(i,:)==1))',var_ctx_p(1,find(var_area_FDR(i,:)==1))',...
-        var_ctx_t(2,find(var_area_FDR(i,:)==1))',var_ctx_p(2,find(var_area_FDR(i,:)==1))',...
-        var_ctx_t(3,find(var_area_FDR(i,:)==1))',var_ctx_p(3,find(var_area_FDR(i,:)==1))',...
-        var_ctx_t(4,find(var_area_FDR(i,:)==1))',var_ctx_p(4,find(var_area_FDR(i,:)==1))',...
-        var_ctx_t(5,find(var_area_FDR(i,:)==1))',var_ctx_p(5,find(var_area_FDR(i,:)==1))',...
-        var_ctx_t(6,find(var_area_FDR(i,:)==1))',var_ctx_p(6,find(var_area_FDR(i,:)==1))',...
-        'RowNames',rn)
-   T.Properties.VariableNames([1 3 5 7 9 11]) = comptitlevar;
+    i = 4;
+    rn = names200(var_area_FDR(i,:)==1);
+    T = table(var_area_t(1,find(var_area_FDR(i,:)==1))',var_area_sd(1,find(var_area_FDR(i,:)==1))',var_area_p(1,find(var_area_FDR(i,:)==1))',...
+        var_area_t(2,find(var_area_FDR(i,:)==1))',var_area_sd(2,find(var_area_FDR(i,:)==1))',var_area_p(2,find(var_area_FDR(i,:)==1))',...
+        var_area_t(3,find(var_area_FDR(i,:)==1))',var_area_sd(3,find(var_area_FDR(i,:)==1))',var_area_p(3,find(var_area_FDR(i,:)==1))',...
+        var_area_t(4,find(var_area_FDR(i,:)==1))',var_area_sd(4,find(var_area_FDR(i,:)==1))',var_area_p(4,find(var_area_FDR(i,:)==1))',...
+        var_area_t(5,find(var_area_FDR(i,:)==1))',var_area_sd(5,find(var_area_FDR(i,:)==1))',var_area_p(5,find(var_area_FDR(i,:)==1))',...
+        var_area_t(6,find(var_area_FDR(i,:)==1))',var_area_sd(6,find(var_area_FDR(i,:)==1))',var_area_p(6,find(var_area_FDR(i,:)==1))',...
+        'RowNames',rn);
+    T.Properties.VariableNames([1 4 7 10 13 15]) = comptitlevar;
     
-     writetable(T, [RPATH 'nihPA_area.csv'], 'WriteRowNames', true)
+    writetable(T, [RPATH 'nihPA_area.csv'], 'WriteRowNames', true)
 
     mltableObj = MATLABTable(T);
     th = mltableObj.Header;
@@ -1441,18 +1469,18 @@ for area_post_hoc = 1
 %     rptview(d);     
 
     %% all in negative affect
-    i =5
-     rn = names200(var_area_FDR(i,:)==1)
-    T= table(var_ctx_t(1,find(var_area_FDR(i,:)==1))',var_ctx_p(1,find(var_area_FDR(i,:)==1))',...
-        var_ctx_t(2,find(var_area_FDR(i,:)==1))',var_ctx_p(2,find(var_area_FDR(i,:)==1))',...
-        var_ctx_t(3,find(var_area_FDR(i,:)==1))',var_ctx_p(3,find(var_area_FDR(i,:)==1))',...
-        var_ctx_t(4,find(var_area_FDR(i,:)==1))',var_ctx_p(4,find(var_area_FDR(i,:)==1))',...
-        var_ctx_t(5,find(var_area_FDR(i,:)==1))',var_ctx_p(5,find(var_area_FDR(i,:)==1))',...
-        var_ctx_t(6,find(var_area_FDR(i,:)==1))',var_ctx_p(6,find(var_area_FDR(i,:)==1))',...
-        'RowNames',rn)
-   T.Properties.VariableNames([1 3 5 7 9 11]) = comptitlevar;
+    i = 5;
+    rn = names200(var_area_FDR(i,:)==1);
+    T = table(var_area_t(1,find(var_area_FDR(i,:)==1))',var_area_sd(1,find(var_area_FDR(i,:)==1))',var_area_p(1,find(var_area_FDR(i,:)==1))',...
+        var_area_t(2,find(var_area_FDR(i,:)==1))',var_area_sd(2,find(var_area_FDR(i,:)==1))',var_area_p(2,find(var_area_FDR(i,:)==1))',...
+        var_area_t(3,find(var_area_FDR(i,:)==1))',var_area_sd(3,find(var_area_FDR(i,:)==1))',var_area_p(3,find(var_area_FDR(i,:)==1))',...
+        var_area_t(4,find(var_area_FDR(i,:)==1))',var_area_sd(4,find(var_area_FDR(i,:)==1))',var_area_p(4,find(var_area_FDR(i,:)==1))',...
+        var_area_t(5,find(var_area_FDR(i,:)==1))',var_area_sd(5,find(var_area_FDR(i,:)==1))',var_area_p(5,find(var_area_FDR(i,:)==1))',...
+        var_area_t(6,find(var_area_FDR(i,:)==1))',var_area_sd(6,find(var_area_FDR(i,:)==1))',var_area_p(6,find(var_area_FDR(i,:)==1))',...
+        'RowNames',rn);
+    T.Properties.VariableNames([1 4 7 10 13 15]) = comptitlevar;
     
-     writetable(T, [RPATH 'nihNA_area.csv'], 'WriteRowNames', true)
+    writetable(T, [RPATH 'nihNA_area.csv'], 'WriteRowNames', true)
 
     mltableObj = MATLABTable(T);
     th = mltableObj.Header;
@@ -1470,16 +1498,16 @@ for area_post_hoc = 1
 %     rptview(d); 
 
     %% all in affect
-    i =6
-     rn = names200(var_area_FDR(i,:)==1)
-    T= table(var_ctx_t(1,find(var_area_FDR(i,:)==1))',var_ctx_p(1,find(var_area_FDR(i,:)==1))',...
-        var_ctx_t(2,find(var_area_FDR(i,:)==1))',var_ctx_p(2,find(var_area_FDR(i,:)==1))',...
-        var_ctx_t(3,find(var_area_FDR(i,:)==1))',var_ctx_p(3,find(var_area_FDR(i,:)==1))',...
-        var_ctx_t(4,find(var_area_FDR(i,:)==1))',var_ctx_p(4,find(var_area_FDR(i,:)==1))',...
-        var_ctx_t(5,find(var_area_FDR(i,:)==1))',var_ctx_p(5,find(var_area_FDR(i,:)==1))',...
-        var_ctx_t(6,find(var_area_FDR(i,:)==1))',var_ctx_p(6,find(var_area_FDR(i,:)==1))',...
-        'RowNames',rn)
-   T.Properties.VariableNames([1 3 5 7 9 11]) = comptitlevar;
+    i = 6;
+    rn = names200(var_area_FDR(i,:)==1);
+    T = table(var_area_t(1,find(var_area_FDR(i,:)==1))',var_area_sd(1,find(var_area_FDR(i,:)==1))',var_area_p(1,find(var_area_FDR(i,:)==1))',...
+        var_area_t(2,find(var_area_FDR(i,:)==1))',var_area_sd(2,find(var_area_FDR(i,:)==1))',var_area_p(2,find(var_area_FDR(i,:)==1))',...
+        var_area_t(3,find(var_area_FDR(i,:)==1))',var_area_sd(3,find(var_area_FDR(i,:)==1))',var_area_p(3,find(var_area_FDR(i,:)==1))',...
+        var_area_t(4,find(var_area_FDR(i,:)==1))',var_area_sd(4,find(var_area_FDR(i,:)==1))',var_area_p(4,find(var_area_FDR(i,:)==1))',...
+        var_area_t(5,find(var_area_FDR(i,:)==1))',var_area_sd(5,find(var_area_FDR(i,:)==1))',var_area_p(5,find(var_area_FDR(i,:)==1))',...
+        var_area_t(6,find(var_area_FDR(i,:)==1))',var_area_sd(6,find(var_area_FDR(i,:)==1))',var_area_p(6,find(var_area_FDR(i,:)==1))',...
+        'RowNames',rn);
+    T.Properties.VariableNames([1 4 7 10 13 15]) = comptitlevar;
     
      writetable(T, [RPATH 'aff_area.csv'], 'WriteRowNames', true)
 
@@ -1506,18 +1534,18 @@ end
 try
 for subc_post_hoc = 1
     %% all in total
-    i =1
-     rn = subcort_fs.Properties.VariableNames(var_sub_FDR(i,:)==1);
-    T= table(var_sub_t(1,find(var_sub_FDR(i,:)==1))',var_sub_p(1,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(2,find(var_sub_FDR(i,:)==1))',var_sub_p(2,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(3,find(var_sub_FDR(i,:)==1))',var_sub_p(3,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(4,find(var_sub_FDR(i,:)==1))',var_sub_p(4,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(5,find(var_sub_FDR(i,:)==1))',var_sub_p(5,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(6,find(var_sub_FDR(i,:)==1))',var_sub_p(6,find(var_sub_FDR(i,:)==1))',...
-        'RowNames',rn)
-     T.Properties.VariableNames([1 3 5 7 9 11]) = comptitlevar;
+    i = 1;
+    rn = subcort_fs.Properties.VariableNames(var_sub_FDR(i,:)==1);
+    T = table(var_sub_t(1,find(var_sub_FDR(i,:)==1))',var_sub_sd(1,find(var_sub_FDR(i,:)==1))',var_sub_p(1,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(2,find(var_sub_FDR(i,:)==1))',var_sub_sd(2,find(var_sub_FDR(i,:)==1))',var_sub_p(2,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(3,find(var_sub_FDR(i,:)==1))',var_sub_sd(3,find(var_sub_FDR(i,:)==1))',var_sub_p(3,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(4,find(var_sub_FDR(i,:)==1))',var_sub_sd(4,find(var_sub_FDR(i,:)==1))',var_sub_p(4,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(5,find(var_sub_FDR(i,:)==1))',var_sub_sd(5,find(var_sub_FDR(i,:)==1))',var_sub_p(5,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(6,find(var_sub_FDR(i,:)==1))',var_sub_sd(6,find(var_sub_FDR(i,:)==1))',var_sub_p(6,find(var_sub_FDR(i,:)==1))',...
+        'RowNames',rn);
+    T.Properties.VariableNames([1 4 7 10 13 15]) = comptitlevar;
     
-     writetable(T, [RPATH 'total_subc.csv'], 'WriteRowNames', true)
+    writetable(T, [RPATH 'total_subc.csv'], 'WriteRowNames', true)
      
     mltableObj = MATLABTable(T);
     th = mltableObj.Header;
@@ -1537,18 +1565,18 @@ for subc_post_hoc = 1
      
     
     %% all in fluid
-     i =2
-     rn = subcort_fs.Properties.VariableNames(var_sub_FDR(i,:)==1);
-    T= table(var_sub_t(1,find(var_sub_FDR(i,:)==1))',var_sub_p(1,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(2,find(var_sub_FDR(i,:)==1))',var_sub_p(2,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(3,find(var_sub_FDR(i,:)==1))',var_sub_p(3,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(4,find(var_sub_FDR(i,:)==1))',var_sub_p(4,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(5,find(var_sub_FDR(i,:)==1))',var_sub_p(5,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(6,find(var_sub_FDR(i,:)==1))',var_sub_p(6,find(var_sub_FDR(i,:)==1))',...
-        'RowNames',rn)
-   T.Properties.VariableNames([1 3 5 7 9 11]) = comptitlevar;
+    i = 2;
+    rn = subcort_fs.Properties.VariableNames(var_sub_FDR(i,:)==1);
+    T = table(var_sub_t(1,find(var_sub_FDR(i,:)==1))',var_sub_sd(1,find(var_sub_FDR(i,:)==1))',var_sub_p(1,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(2,find(var_sub_FDR(i,:)==1))',var_sub_sd(2,find(var_sub_FDR(i,:)==1))',var_sub_p(2,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(3,find(var_sub_FDR(i,:)==1))',var_sub_sd(3,find(var_sub_FDR(i,:)==1))',var_sub_p(3,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(4,find(var_sub_FDR(i,:)==1))',var_sub_sd(4,find(var_sub_FDR(i,:)==1))',var_sub_p(4,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(5,find(var_sub_FDR(i,:)==1))',var_sub_sd(5,find(var_sub_FDR(i,:)==1))',var_sub_p(5,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(6,find(var_sub_FDR(i,:)==1))',var_sub_sd(6,find(var_sub_FDR(i,:)==1))',var_sub_p(6,find(var_sub_FDR(i,:)==1))',...
+        'RowNames',rn);
+    T.Properties.VariableNames([1 4 7 10 13 15]) = comptitlevar;
     
-     writetable(T, [RPATH 'fluid_subc.csv'], 'WriteRowNames', true)
+    writetable(T, [RPATH 'fluid_subc.csv'], 'WriteRowNames', true)
      
     mltableObj = MATLABTable(T);
     th = mltableObj.Header;
@@ -1566,18 +1594,18 @@ for subc_post_hoc = 1
 %     rptview(d);      
      
     %% all in crystallized
-    i =3
-     rn = subcort_fs.Properties.VariableNames(var_sub_FDR(i,:)==1);
-    T= table(var_sub_t(1,find(var_sub_FDR(i,:)==1))',var_sub_p(1,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(2,find(var_sub_FDR(i,:)==1))',var_sub_p(2,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(3,find(var_sub_FDR(i,:)==1))',var_sub_p(3,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(4,find(var_sub_FDR(i,:)==1))',var_sub_p(4,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(5,find(var_sub_FDR(i,:)==1))',var_sub_p(5,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(6,find(var_sub_FDR(i,:)==1))',var_sub_p(6,find(var_sub_FDR(i,:)==1))',...
-        'RowNames',rn)
-   T.Properties.VariableNames([1 3 5 7 9 11]) = comptitlevar;
+    i = 3;
+    rn = subcort_fs.Properties.VariableNames(var_sub_FDR(i,:)==1);
+    T = table(var_sub_t(1,find(var_sub_FDR(i,:)==1))',var_sub_sd(1,find(var_sub_FDR(i,:)==1))',var_sub_p(1,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(2,find(var_sub_FDR(i,:)==1))',var_sub_sd(2,find(var_sub_FDR(i,:)==1))',var_sub_p(2,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(3,find(var_sub_FDR(i,:)==1))',var_sub_sd(3,find(var_sub_FDR(i,:)==1))',var_sub_p(3,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(4,find(var_sub_FDR(i,:)==1))',var_sub_sd(4,find(var_sub_FDR(i,:)==1))',var_sub_p(4,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(5,find(var_sub_FDR(i,:)==1))',var_sub_sd(5,find(var_sub_FDR(i,:)==1))',var_sub_p(5,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(6,find(var_sub_FDR(i,:)==1))',var_sub_sd(6,find(var_sub_FDR(i,:)==1))',var_sub_p(6,find(var_sub_FDR(i,:)==1))',...
+        'RowNames',rn);
+    T.Properties.VariableNames([1 4 7 10 13 15]) = comptitlevar;
     
-     writetable(T, [RPATH 'crystal_subc.csv'], 'WriteRowNames', true)
+    writetable(T, [RPATH 'crystal_subc.csv'], 'WriteRowNames', true)
      
     mltableObj = MATLABTable(T);
     th = mltableObj.Header;
@@ -1595,18 +1623,18 @@ for subc_post_hoc = 1
 %     rptview(d);       
      
     %% all in positive affect
-    i =4
-     rn = subcort_fs.Properties.VariableNames(var_sub_FDR(i,:)==1);
-    T= table(var_sub_t(1,find(var_sub_FDR(i,:)==1))',var_sub_p(1,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(2,find(var_sub_FDR(i,:)==1))',var_sub_p(2,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(3,find(var_sub_FDR(i,:)==1))',var_sub_p(3,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(4,find(var_sub_FDR(i,:)==1))',var_sub_p(4,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(5,find(var_sub_FDR(i,:)==1))',var_sub_p(5,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(6,find(var_sub_FDR(i,:)==1))',var_sub_p(6,find(var_sub_FDR(i,:)==1))',...
-        'RowNames',rn)
-   T.Properties.VariableNames([1 3 5 7 9 11]) = comptitlevar;
+    i = 4;
+    rn = subcort_fs.Properties.VariableNames(var_sub_FDR(i,:)==1);
+    T = table(var_sub_t(1,find(var_sub_FDR(i,:)==1))',var_sub_sd(1,find(var_sub_FDR(i,:)==1))',var_sub_p(1,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(2,find(var_sub_FDR(i,:)==1))',var_sub_sd(2,find(var_sub_FDR(i,:)==1))',var_sub_p(2,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(3,find(var_sub_FDR(i,:)==1))',var_sub_sd(3,find(var_sub_FDR(i,:)==1))',var_sub_p(3,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(4,find(var_sub_FDR(i,:)==1))',var_sub_sd(4,find(var_sub_FDR(i,:)==1))',var_sub_p(4,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(5,find(var_sub_FDR(i,:)==1))',var_sub_sd(5,find(var_sub_FDR(i,:)==1))',var_sub_p(5,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(6,find(var_sub_FDR(i,:)==1))',var_sub_sd(6,find(var_sub_FDR(i,:)==1))',var_sub_p(6,find(var_sub_FDR(i,:)==1))',...
+        'RowNames',rn);
+    T.Properties.VariableNames([1 4 7 10 13 15]) = comptitlevar;
     
-     writetable(T, [RPATH 'nihPA_subc.csv'], 'WriteRowNames', true)
+    writetable(T, [RPATH 'nihPA_subc.csv'], 'WriteRowNames', true)
      
      
     mltableObj = MATLABTable(T);
@@ -1625,18 +1653,18 @@ for subc_post_hoc = 1
 %     rptview(d);     
      
     %% all in negative affect 
-    i = 5 %(!!!) 
-     rn = subcort_fs.Properties.VariableNames(var_sub_FDR(i,:)==1);
-    T= table(var_sub_t(1,find(var_sub_FDR(i,:)==1))',var_sub_p(1,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(2,find(var_sub_FDR(i,:)==1))',var_sub_p(2,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(3,find(var_sub_FDR(i,:)==1))',var_sub_p(3,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(4,find(var_sub_FDR(i,:)==1))',var_sub_p(4,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(5,find(var_sub_FDR(i,:)==1))',var_sub_p(5,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(6,find(var_sub_FDR(i,:)==1))',var_sub_p(6,find(var_sub_FDR(i,:)==1))',...
-        'RowNames',rn)
-    T.Properties.VariableNames([1 3 5 7 9 11]) = comptitlevar;
+    i = 5;
+    rn = subcort_fs.Properties.VariableNames(var_sub_FDR(i,:)==1);
+    T = table(var_sub_t(1,find(var_sub_FDR(i,:)==1))',var_sub_sd(1,find(var_sub_FDR(i,:)==1))',var_sub_p(1,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(2,find(var_sub_FDR(i,:)==1))',var_sub_sd(2,find(var_sub_FDR(i,:)==1))',var_sub_p(2,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(3,find(var_sub_FDR(i,:)==1))',var_sub_sd(3,find(var_sub_FDR(i,:)==1))',var_sub_p(3,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(4,find(var_sub_FDR(i,:)==1))',var_sub_sd(4,find(var_sub_FDR(i,:)==1))',var_sub_p(4,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(5,find(var_sub_FDR(i,:)==1))',var_sub_sd(5,find(var_sub_FDR(i,:)==1))',var_sub_p(5,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(6,find(var_sub_FDR(i,:)==1))',var_sub_sd(6,find(var_sub_FDR(i,:)==1))',var_sub_p(6,find(var_sub_FDR(i,:)==1))',...
+        'RowNames',rn);
+    T.Properties.VariableNames([1 4 7 10 13 15]) = comptitlevar;
     
-     writetable(T, [RPATH 'nihNA_subc.csv'], 'WriteRowNames', true)
+    writetable(T, [RPATH 'nihNA_subc.csv'], 'WriteRowNames', true)
      
     mltableObj = MATLABTable(T);
     th = mltableObj.Header;
@@ -1654,18 +1682,18 @@ for subc_post_hoc = 1
 %     rptview(d);  
 
      %% all in affect
-     i =6 %(!!!) 
-     rn = subcort_fs.Properties.VariableNames(var_sub_FDR(i,:)==1);
-    T= table(var_sub_t(1,find(var_sub_FDR(i,:)==1))',var_sub_p(1,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(2,find(var_sub_FDR(i,:)==1))',var_sub_p(2,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(3,find(var_sub_FDR(i,:)==1))',var_sub_p(3,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(4,find(var_sub_FDR(i,:)==1))',var_sub_p(4,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(5,find(var_sub_FDR(i,:)==1))',var_sub_p(5,find(var_sub_FDR(i,:)==1))',...
-        var_sub_t(6,find(var_sub_FDR(i,:)==1))',var_sub_p(6,find(var_sub_FDR(i,:)==1))',...
-        'RowNames',rn)
-    T.Properties.VariableNames([1 3 5 7 9 11]) = comptitlevar;
+    i = 6;
+    rn = subcort_fs.Properties.VariableNames(var_sub_FDR(i,:)==1);
+    T = table(var_sub_t(1,find(var_sub_FDR(i,:)==1))',var_sub_sd(1,find(var_sub_FDR(i,:)==1))',var_sub_p(1,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(2,find(var_sub_FDR(i,:)==1))',var_sub_sd(2,find(var_sub_FDR(i,:)==1))',var_sub_p(2,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(3,find(var_sub_FDR(i,:)==1))',var_sub_sd(3,find(var_sub_FDR(i,:)==1))',var_sub_p(3,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(4,find(var_sub_FDR(i,:)==1))',var_sub_sd(4,find(var_sub_FDR(i,:)==1))',var_sub_p(4,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(5,find(var_sub_FDR(i,:)==1))',var_sub_sd(5,find(var_sub_FDR(i,:)==1))',var_sub_p(5,find(var_sub_FDR(i,:)==1))',...
+        var_sub_t(6,find(var_sub_FDR(i,:)==1))',var_sub_sd(6,find(var_sub_FDR(i,:)==1))',var_sub_p(6,find(var_sub_FDR(i,:)==1))',...
+        'RowNames',rn);
+    T.Properties.VariableNames([1 4 7 10 13 15]) = comptitlevar;
     
-     writetable(T, [RPATH 'aff_subc.csv'], 'WriteRowNames', true)
+    writetable(T, [RPATH 'aff_subc.csv'], 'WriteRowNames', true)
 
      
     mltableObj = MATLABTable(T);
